@@ -977,4 +977,85 @@ class StreamlitUI:
                         <span class="badge badge-blue">Informatika</span>
                         <span class="badge badge-blue">Aktif</span>
                         <span class="badge badge-blue">Siti</span>
-                        <span class="badge badge-blue">Manajemen</
+                        <span class="badge badge-blue">Manajemen</span>
+                        <span class="badge badge-blue">3.85</span>
+                        <span class="badge badge-blue">Cuti</span>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 0.9rem; color: #64748b;">
+                        Tips: Bisa cari dengan NIM, Nama, Prodi, atau Status.
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+    
+    def _render_statistik(self):
+        st.markdown("""
+            <div class="main-header">
+                <h1>Statistik</h1>
+                <p>Analisis data mahasiswa</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        data = self.mahasiswa.get_all()
+        
+        if not data:
+            st.info("Belum ada data. Generate contoh data terlebih dahulu.")
+            return
+        
+        col1, col2, col3 = st.columns(3)
+        
+        total = len(data)
+        aktif = len([d for d in data if d['status'] == 'Aktif'])
+        avg_ipk = sum(d['ipk'] for d in data) / total
+        
+        with col1:
+            st.metric("Total", total)
+        with col2:
+            st.metric("Aktif", aktif)
+        with col3:
+            st.metric("Rata-rata IPK", f"{avg_ipk:.2f}")
+        
+        st.subheader("Distribusi Status")
+        status_counts = {}
+        for item in data:
+            status_counts[item['status']] = status_counts.get(item['status'], 0) + 1
+        
+        df_status = pd.DataFrame(list(status_counts.items()), columns=['Status', 'Jumlah'])
+        fig = px.pie(df_status, values='Jumlah', names='Status', hole=0.3)
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(fig, use_container_width=True)
+    
+    def run(self):
+        st.markdown("""
+            <div class="main-header">
+                <h1>SIMM - Sistem Informasi Mahasiswa</h1>
+                <p>Universitas Pamulang</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if not st.session_state.logged_in:
+            self._render_login_register()
+            return
+        
+        menu = self._render_sidebar()
+        
+        if menu == "Dashboard":
+            self._render_dashboard()
+        elif menu == "Tambah Data":
+            self._render_tambah()
+        elif menu == "Data Mahasiswa":
+            self._render_data()
+        elif menu == "Cari Mahasiswa":
+            self._render_search()
+        elif menu == "Statistik":
+            self._render_statistik()
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+def main():
+    app = StreamlitUI()
+    app.run()
+
+if __name__ == "__main__":
+    main()
