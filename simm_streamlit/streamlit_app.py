@@ -301,7 +301,7 @@ elif menu == "➕ Tambah Mahasiswa":
         
         with col1:
             nim = st.text_input("NIM (10-12 digit)", placeholder="Contoh: 2010114001")
-            nama = st.text_input("Nama Lengkap", placeholder="Contoh: Muhammad Fitra")
+            nama = st.text_input("Nama Lengkap", placeholder="Contoh: Fajar Dian Taufani")
             prodi = st.selectbox("Program Studi", [
                 "Teknik Informatika", "Sistem Informasi", "Manajemen Informatika",
                 "Teknik Komputer", "Akuntansi", "Manajemen", "Hukum", "Psikologi"
