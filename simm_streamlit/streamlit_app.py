@@ -5,155 +5,220 @@ import json
 import os
 import pandas as pd
 
-# ==========================================
-# 🎓 1. KONFIGURASI HALAMAN & THEME (GUI)
-# ==========================================
-st.set_page_config(page_title="Sistem Akademik Kampus", page_icon="🎓", layout="wide")
+# --- CONFIG HALAMAN ---
+st.set_page_config(page_title="MyUnpam - Academic System", page_icon="🎓", layout="wide")
 
-# CSS Kustom untuk Replikasi Total UI MyUnpam (Halaman Login & Dashboard)
-style_unpam_premium = """
+# ==========================================
+# 🎨 REPLIKASI DETAIL VISUAL (CSS INJECTION)
+# ==========================================
+style_exact_unpam = """
 <style>
-/* Background Utama Gradasi Biru-Ungu Kampus */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+/* Reset & Font Global */
+* {
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Latar Belakang Gradasi Biru Solid */
 [data-testid="stAppViewContainer"] {
-    background: linear-gradient(135deg, #1E40AF 0%, #0284C7 50%, #818CF8 100%) !important;
+    background: linear-gradient(180deg, #3B82F6 0%, #1D4ED8 100%) !important;
     background-attachment: fixed;
 }
 [data-testid="stHeader"] { background: rgba(0,0,0,0); }
-[data-testid="stSidebar"] { background-color: rgba(255,255,255,0.95) !important; }
 
-/* Wrapper Form Login & Registrasi (Card Putih Tengah) */
-.unpam-login-card {
-    background-color: #FFFFFF !important;
-    border-radius: 16px;
-    padding: 35px 40px;
-    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.25);
-    max-width: 450px;
-    margin: 60px auto 20px auto;
-    text-align: center;
-}
-.unpam-login-card label, .unpam-login-card p { 
-    color: #334155 !important; 
-    font-weight: 600; 
-    text-align: left;
-}
-
-/* Banner Pesan Error Merah di Bagian Bawah Form */
-.error-banner-unpam {
-    background-color: #DC2626; 
-    color: white !important; 
-    text-align: center;
-    padding: 12px; 
-    border-radius: 8px; 
-    font-weight: bold; 
-    font-size: 14px;
-    max-width: 450px; 
-    margin: 15px auto 0 auto; 
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
-}
-
-/* Kotak Sapaan Profil Admin */
-.profile-greeting-box {
-    background-color: rgba(255, 255, 255, 0.15);
-    padding: 22px;
-    border-radius: 16px;
-    margin-bottom: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-}
-
-/* Kontainer Ringkasan Akademik Pastel */
-.summary-academic-box {
-    background: linear-gradient(90deg, #CFFAFE 0%, #E0F2FE 100%);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 30px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-}
-
-/* Kartu Putih Kontainer Fitur Utama */
-.main-feature-card {
-    background-color: rgba(255, 255, 255, 0.95);
+/* --- 🔐 INTERFACE LOGIN (Replikasi Foto 1) --- */
+.login-container {
+    background-color: #FFFFFF;
     border-radius: 20px;
-    padding: 30px;
-    box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.08);
+    padding: 35px;
+    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.15);
+    max-width: 420px;
+    margin: 60px auto 10px auto;
+    text-align: center;
 }
-
-/* Terminal Log untuk Kompleksitas Algoritma */
-.terminal-complexity {
-    background-color: #0F172A; 
-    color: #38BDF8; 
-    padding: 12px 16px; 
-    border-left: 4px solid #38BDF8; 
-    border-radius: 6px; 
-    font-family: 'Fira Code', monospace; 
-    font-size: 13px; 
+.login-logos {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
 }
+.logo-placeholder {
+    width: 50px;
+    height: 50px;
+    background-color: #F1F5F9;
+    border-radius: 50%;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94A3B8;
+}
+.login-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1E293B;
+}
+.input-label {
+    text-align: left;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+.error-banner-unpam {
+    background-color: #991B1B;
+    color: #FFFFFF !important;
+    text-align: center;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    max-width: 420px;
+    margin: 15px auto;
+}
 
-/* Pengaturan Tombol Modifikasi */
+/* --- 📊 INTERFACE DASHBOARD (Replikasi Foto 2) --- */
+/* Top Header Ungu Pastel */
+.top-header-purple {
+    background-color: #818CF8;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -10px -50px 20px -50px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.top-header-title {
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Sapaan Pengguna */
+.user-greeting-box {
+    color: #FFFFFF;
+    margin-bottom: 20px;
+}
+.user-name { font-size: 24px; font-weight: 600; }
+.user-sub { font-size: 13px; opacity: 0.9; }
+
+/* Ringkasan Akademik Kotak Transparan */
+.academic-box {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    padding: 15px;
+    margin-bottom: 25px;
+}
+.academic-box-title {
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+/* Modifikasi Metric Streamlit biar Mirip Kotak Putih di Foto */
+[data-testid="stMetric"] {
+    background-color: #FFFFFF !important;
+    border-radius: 12px !important;
+    padding: 10px 15px !important;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05) !important;
+}
+[data-testid="stMetricValue"] { color: #22C55E !important; font-weight: 700 !important; font-size: 20px !important; }
+[data-testid="stMetricLabel"] { color: #475569 !important; font-size: 12px !important; font-weight: 600 !important; }
+
+/* TAB PUTIH RAKSASA MENU UTAMA (Lekukan Atas Sesuai Foto) */
+.menu-white-sheet {
+    background-color: #F8FAFC !important;
+    border-radius: 35px 35px 0px 0px;
+    padding: 30px;
+    margin: 25px -50px -50px -50px;
+    min-height: 700px;
+    box-shadow: 0px -10px 25px rgba(0, 0, 0, 0.05);
+}
+.menu-sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+.menu-sheet-title { font-size: 20px; font-weight: 700; color: #1E293B; font-style: italic; }
+.menu-sheet-link { font-size: 14px; color: #64748B; font-style: italic; }
+
+/* Tombol Menu Grid Kustom (Menggantikan Button Bawaan) */
 div.stButton > button {
-    border-radius: 8px !important;
-    font-weight: bold !important;
+    width: 100% !important;
+    border-radius: 16px !important;
+    padding: 20px 15px !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    border: none !important;
+    text-align: left !important;
+    display: flex !important;
+    align-items: center !important;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.04) !important;
+}
+div.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Warna Grid Sesuai Foto */
+.m-blue button { background-color: #E0F2FE !important; color: #0369A1 !important; }
+.m-purple button { background-color: #F3E8FF !important; color: #6B21A8 !important; }
+.m-slate button { background-color: #F1F5F9 !important; color: #334155 !important; }
+.m-login button { background-color: #3B82F6 !important; color: white !important; text-align: center !important; justify-content: center !important;}
+
+/* Kontainer Tempat Kerja Fitur (Di bawah Grid) */
+.workspace-card {
+    background-color: #FFFFFF;
+    border-radius: 16px;
+    padding: 25px;
+    margin-top: 30px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.02);
+}
+.workspace-card h3 {
+    color: #1E293B !important;
+    margin-bottom: 15px;
+}
+
+/* Terminal Box */
+.algo-terminal {
+    background-color: #0F172A;
+    color: #38BDF8;
+    padding: 12px 16px;
+    border-left: 4px solid #38BDF8;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 13px;
+    margin-bottom: 15px;
 }
 </style>
 """
-st.markdown(style_unpam_premium, unsafe_allow_html=True)
-
 
 # ==========================================
-# 🏛️ 2. BACKEND ENGINE: OOP & FILE I/O
+# 💾 DATABASE & BACKEND SYSTEM (TETAP SAMA)
 # ==========================================
-class Orang:
-    """Class Induk (Konsep Pewarisan)"""
-    def __init__(self, nama: str):
-        self._nama = nama  # Protected Attribute (Enkapsulasi)
-        
-    def get_info(self):
-        return f"Nama: {self._nama}"
-
-class Mahasiswa(Orang):
-    """Class Anak (Konsep Pewarisan)"""
-    def __init__(self, nim: str, nama: str, jurusan: str, angkatan: int):
-        super().__init__(nama)
-        self.__nim = nim          # Private Attribute (Enkapsulasi Ketat)
-        self.jurusan = jurusan    
-        self.angkatan = angkatan  
-        
-    # Fungsi Getter & Setter
-    def get_nim(self): return self.__nim
-    def get_nama(self): return self._nama
-    def set_nama(self, nama_baru): self._nama = nama_baru
-
-    def get_info(self):
-        """Override Method (Polimorfisme)"""
-        return f"Mahasiswa: {self._nama} ({self.__nim}) - {self.jurusan}"
-
-    def to_dict(self):
-        return {"NIM": self.__nim, "Nama": self._nama, "Jurusan": self.jurusan, "Angkatan": self.angkatan}
-
-FILE_DATA = "data_mahasiswa.json"
-FILE_USERS = "data_users.json"
-
-def muat_data_json(file_name):
-    if os.path.exists(file_name):
-        try:
-            with open(file_name, "r") as f: return json.load(f)
-        except: return []
+FILE_DATA, FILE_USERS = "data_mahasiswa.json", "data_users.json"
+def load_json(f):
+    if os.path.exists(f):
+        with open(f, "r") as file: return json.load(file)
     return []
+def save_json(d, f):
+    with open(f, "w") as file: json.dump(d, file, indent=4)
 
-def simpan_data_json(data, file_name):
-    with open(file_name, "w") as f: json.dump(data, f, indent=4)
-
-# Inisialisasi State Basis Data ke Array Sistem (Session State)
-if 'users_db' not in st.session_state: st.session_state['users_db'] = muat_data_json(FILE_USERS)
-if 'mahasiswa_db' not in st.session_state: st.session_state['mahasiswa_db'] = muat_data_json(FILE_DATA)
+if 'users_db' not in st.session_state: st.session_state['users_db'] = load_json(FILE_USERS)
+if 'mahasiswa_db' not in st.session_state: st.session_state['mahasiswa_db'] = load_json(FILE_DATA)
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'username' not in st.session_state: st.session_state['username'] = ""
-if 'error_msg' not in st.session_state: st.session_state['error_msg'] = ""
-if 'current_menu' not in st.session_state: st.session_state['current_menu'] = "Ringkasan"
-
+if 'err_msg' not in st.session_state: st.session_state['err_msg'] = ""
+if 'current_tab' not in st.session_state: st.session_state['current_tab'] = "Akademik"
 
 # ==========================================
-# 🔀 3. ALGORITMA CORE ENGINE (SORT & SEARCH)
+# 🔀 ALGORITMA CORE (TETAP SAMA)
 # ==========================================
 def bubble_sort_mhs(daftar, kriteria):
     arr = list(daftar)
@@ -162,8 +227,7 @@ def bubble_sort_mhs(daftar, kriteria):
         for j in range(0, n-i-1):
             val_j = arr[j]['Nama'] if kriteria == "Nama" else arr[j]['NIM']
             val_j1 = arr[j+1]['Nama'] if kriteria == "Nama" else arr[j+1]['NIM']
-            if val_j > val_j1:
-                arr[j], arr[j+1] = arr[j+1], arr[j]
+            if val_j > val_j1: arr[j], arr[j+1] = arr[j+1], arr[j]
     return arr
 
 def insertion_sort_mhs(daftar, kriteria):
@@ -178,201 +242,199 @@ def insertion_sort_mhs(daftar, kriteria):
         arr[j+1] = key_obj
     return arr
 
-def linear_search_mhs(daftar, kunci):
-    return [d for d in daftar if kunci.lower() in d['NIM'].lower() or kunci.lower() in d['Nama'].lower()]
-
-
 # ==========================================
-# 🔐 4. INTERFACE AUTENTIKASI (LOGIN & REGISTER)
+# 🔐 RENDER: LOGIN & REGISTER (FOTO 1)
 # ==========================================
 if not st.session_state['logged_in']:
-    _, center_col, _ = st.columns([1, 1.4, 1])
+    st.markdown(style_exact_unpam, unsafe_allow_html=True)
+    _, center_col, _ = st.columns([1, 1.2, 1])
+    
     with center_col:
-        st.markdown("<h1 style='text-align: center; color: white; margin-top:40px; font-weight:800;'>Learning Activities Digital System</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: white; font-size: 16px; opacity:0.85;'>Universitas Pamulang Portal</p>", unsafe_allow_html=True)
+        st.markdown('<div style="height:40px;"></div>', unsafe_allow_html=True)
+        choice = st.radio("Akses", ["LOGIN", "REGISTRASI"], horizontal=True, label_visibility="collapsed")
         
-        auth_choice = st.radio("Akses Otentikasi", ["MASUK (LOGIN)", "DAFTAR AKUN BARU"], horizontal=True)
-        st.markdown('<div class="unpam-login-card">', unsafe_allow_html=True)
+        st.markdown('<div class="login-container">', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="login-logos">
+            <div class="logo-placeholder">YSJ</div>
+            <div class="login-title">LOGIN</div>
+            <div class="logo-placeholder">UNPAM</div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        if auth_choice == "MASUK (LOGIN)":
-            st.markdown("<h2 style='color: #1E293B; margin-bottom: 25px; font-weight:700;'>LOGIN</h2>", unsafe_allow_html=True)
-            u_login = st.text_input("Username / NIM *", placeholder="Masukkan Kredensial")
-            p_login = st.text_input("Password *", type="password", placeholder="••••••••••••")
+        if choice == "LOGIN":
+            st.markdown('<div class="input-label">Username *</div>', unsafe_allow_html=True)
+            u_in = st.text_input("", key="u_log", label_visibility="collapsed", placeholder="Username / NIM")
+            st.markdown('<div class="input-label">Password *</div>', unsafe_allow_html=True)
+            p_in = st.text_input("", type="password", key="p_log", label_visibility="collapsed", placeholder="••••••••")
             
-            if st.button("LOGIN", use_container_width=True, type="primary"):
-                found = next((u for u in st.session_state['users_db'] if u['username'] == u_login), None)
-                if found and found['password'] == p_login:
+            st.markdown('<div class="m-login">', unsafe_allow_html=True)
+            if st.button("LOGIN", key="btn_submit_l"):
+                user = next((x for x in st.session_state['users_db'] if x['username'] == u_in), None)
+                if user and user['password'] == p_in:
                     st.session_state['logged_in'] = True
-                    st.session_state['username'] = u_login
-                    st.session_state['error_msg'] = ""
+                    st.session_state['username'] = u_in
+                    st.session_state['err_msg'] = ""
                     st.rerun()
                 else:
-                    st.session_state['error_msg'] = "Akun anda sudah tidak terdaftar atau password salah"
+                    st.session_state['err_msg'] = "Akun anda sudah tidak terdaftar atau password salah"
                     st.rerun()
-
-        elif auth_choice == "DAFTAR AKUN BARU":
-            st.markdown("<h2 style='color: #1E293B; margin-bottom: 25px; font-weight:700;'>REGISTRASI ADMIN</h2>", unsafe_allow_html=True)
-            u_reg = st.text_input("Username Admin Baru *", placeholder="Contoh: admin_informatika")
-            p_reg = st.text_input("Password Baru *", type="password")
-            p_conf = st.text_input("Konfirmasi Password *", type="password")
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="input-label">Username Baru *</div>', unsafe_allow_html=True)
+            u_reg = st.text_input("", key="u_reg", label_visibility="collapsed")
+            st.markdown('<div class="input-label">Password Baru *</div>', unsafe_allow_html=True)
+            p_reg = st.text_input("", type="password", key="p_reg", label_visibility="collapsed")
             
-            if st.button("DAFTAR", use_container_width=True, type="primary"):
+            st.markdown('<div class="m-login">', unsafe_allow_html=True)
+            if st.button("DAFTAR", key="btn_submit_r"):
                 if u_reg and p_reg:
-                    if p_reg == p_conf:
-                        if any(u['username'] == u_reg for u in st.session_state['users_db']):
-                            st.session_state['error_msg'] = "Username sudah terpakai!"
-                            st.rerun()
-                        else:
-                            st.session_state['users_db'].append({"username": u_reg, "password": p_reg})
-                            simpan_data_json(st.session_state['users_db'], FILE_USERS)
-                            st.session_state['error_msg'] = ""
-                            st.success("Akun terdaftar! Silakan pindah ke tab LOGIN.")
-                    else:
-                        st.session_state['error_msg'] = "Konfirmasi password tidak cocok!"
-                        st.rerun()
+                    st.session_state['users_db'].append({"username": u_reg, "password": p_reg})
+                    save_json(st.session_state['users_db'], FILE_USERS)
+                    st.success("Berhasil didaftarkan! Silakan pindah ke tab LOGIN.")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
         st.markdown('</div>', unsafe_allow_html=True)
         
-        if st.session_state['error_msg']:
-            st.markdown(f'<div class="error-banner-unpam">{st.session_state["error_msg"]}</div>', unsafe_allow_html=True)
-
+        if st.session_state['err_msg']:
+            st.markdown(f'<div class="error-banner-unpam">{st.session_state["err_msg"]}</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 📊 5. INTERFACE DASHBOARD UTAMA ADMIN
+# 📊 RENDER: DASHBOARD REPLIKASI (FOTO 2)
 # ==========================================
 else:
-    # --- HEADER Sapaan Personal ---
-    st.markdown(f"""
-    <div class="profile-greeting-box">
-        <span style="font-size: 26px; font-weight: 700; color: white;">Hai, {st.session_state['username']} 👋</span><br>
-        <span style="font-size: 14px; color: white; opacity: 0.9;">Sistem Aktivitas Pembelajaran Digital Universitas Pamulang</span><br>
-        <span style="font-size: 12px; color: #6EE7B7; font-weight: bold;">🟢 Role: Administrator Sistem</span>
+    st.markdown(style_exact_unpam, unsafe_allow_html=True)
+    
+    # Top Purple Header
+    st.markdown("""
+    <div class="top-header-purple">
+        <div class="top-header-title">🎓 Learning Activities through Digital System</div>
+        <div style="color:white; font-size:16px;">🔔</div>
     </div>
     """, unsafe_allow_html=True)
-
-    db_mhs = st.session_state['mahasiswa_db']
-    df_mhs = pd.DataFrame(db_mhs) if db_mhs else pd.DataFrame(columns=["NIM", "Nama", "Jurusan", "Angkatan"])
-
-    # --- WIDGET RINGKASAN AKADEMIK ---
-    st.markdown('<div class="summary-academic-box"><b style="color:#0369A1; font-size:15px;">📋 Ringkasan Akademik Global</b>', unsafe_allow_html=True)
-    mc1, mc2, mc3 = st.columns(3)
-    mc1.metric("Total Mahasiswa Terdaftar", len(df_mhs))
-    mc2.metric("Total Program Studi Aktif", df_mhs["Jurusan"].nunique() if db_mhs else 0)
-    mc3.metric("Rata-rata Angkatan", int(df_mhs["Angkatan"].mean()) if db_mhs else 0)
+    
+    # Sapaan Profil
+    st.markdown(f"""
+    <div class="user-greeting-box">
+        <div class="user-name">Hai, {st.session_state['username']} 🖐️</div>
+        <div class="user-sub">Administrator Hub System</div>
+        <div style="font-size:11px; color:#BCF5D4; font-weight:600; margin-top:3px;">🟢 Status: Active Session</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Mempersiapkan Data
+    mhs_list = st.session_state['mahasiswa_db']
+    df = pd.DataFrame(mhs_list) if mhs_list else pd.DataFrame(columns=["NIM", "Nama", "Jurusan", "Angkatan"])
+    
+    # Ringkasan Kontainer
+    st.markdown('<div class="academic-box"><div class="academic-box-title">📋 Ringkasan Akademik</div>', unsafe_allow_html=True)
+    col_m1, col_m2, col_m3 = st.columns(3)
+    col_m1.metric("TOTAL MHS", len(df))
+    col_m2.metric("PRODI AKTIF", df["Jurusan"].nunique() if mhs_list else 0)
+    col_m3.metric("RATA2 ANGKATAN", int(df["Angkatan"].mean()) if mhs_list else 0)
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # --- NAVIGASI GRID MENU UTAMA ---
-    st.markdown("<h4 style='color: white; margin-bottom: 12px;'>📂 Navigasi Menu Utama</h4>", unsafe_allow_html=True)
-    gc1, gc2, gc3 = st.columns(3)
-    with gc1:
-        if st.button("📊 Tampilkan & Urutkan Data", use_container_width=True): st.session_state['current_menu'] = "Ringkasan"
-        if st.button("➕ Tambah Mahasiswa Baru", use_container_width=True): st.session_state['current_menu'] = "Tambah"
-    with gc2:
-        if st.button("🔍 Pencarian Cepat Algoritma", use_container_width=True): st.session_state['current_menu'] = "Cari"
-        if st.button("🔄 Edit Informasi Data", use_container_width=True): st.session_state['current_menu'] = "Edit"
-    with gc3:
-        if st.button("❌ Hapus Data Permanen", use_container_width=True): st.session_state['current_menu'] = "Hapus"
-        if st.button("🚪 Keluar (Logout System)", type="primary", use_container_width=True):
-            st.session_state['logged_in'] = False
-            st.session_state['username'] = ""
-            st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # --- KONTAINER AKSI DINAMIS ---
-    st.markdown('<div class="main-feature-card">', unsafe_allow_html=True)
-
-    # A. MENU: RINGKASAN & SORTING
-    if st.session_state['current_menu'] == "Ringkasan":
-        st.markdown("<h3 style='color:#1E293B !important;'>📋 Daftar Seluruh Mahasiswa</h3>", unsafe_allow_html=True)
-        if db_mhs:
-            sc1, sc2 = st.columns(2)
-            with sc1: v_alg = st.selectbox("Pilih Algoritma Sorting", ["Bubble Sort", "Insertion Sort"])
-            with sc2: v_crit = st.selectbox("Urutkan Berdasarkan Kriteria", ["NIM", "Nama"])
+    
+    # --- LEMBARAN PUTIH MENU UTAMA (TAB SHEET) ---
+    st.markdown('<div class="menu-white-sheet">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="menu-sheet-header">
+        <div class="menu-sheet-title">Menu Utama</div>
+        <div class="menu-sheet-link">lihat semua &gt;</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Grid 6 Tombol Menu Sesuai Warna Asli Gambar
+    g1, g2 = st.columns(2)
+    with g1:
+        st.markdown('<div class="m-blue">', unsafe_allow_html=True)
+        if st.button("👨‍🎓 &nbsp; Akademik (Tabel & Sorting)", use_container_width=True, key="m1"): st.session_state['current_tab'] = "Akademik"
+        st.markdown('</div><div class="m-purple">', unsafe_allow_html=True)
+        if st.button("📝 &nbsp; Registrasi Mhs (Tambah Baru)", use_container_width=True, key="m3"): st.session_state['current_tab'] = "Tambah"
+        st.markdown('</div><div class="m-slate">', unsafe_allow_html=True)
+        if st.button("📋 &nbsp; Log Kompleksitas Algoritma", use_container_width=True, key="m5"): st.session_state['current_tab'] = "Log"
+        st.markdown('</div>', unsafe_allow_html=True)
+    with g2:
+        st.markdown('<div class="m-blue">', unsafe_allow_html=True)
+        if st.button("🔍 &nbsp; Pencarian Cepat (Search)", use_container_width=True, key="m2"): st.session_state['current_tab'] = "Cari"
+        st.markdown('</div><div class="m-purple">', unsafe_allow_html=True)
+        if st.button("🔄 &nbsp; Modifikasi Informasi (Edit)", use_container_width=True, key="m4"): st.session_state['current_tab'] = "Edit"
+        st.markdown('</div><div class="m-slate">', unsafe_allow_html=True)
+        if st.button("🗑️ &nbsp; Eliminasi Mahasiswa (Hapus)", use_container_width=True, key="m6"): st.session_state['current_tab'] = "Hapus"
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    # --- WORKSPACE AKSI (DI BAWAH GRID) ---
+    st.markdown('<div class="workspace-card">', unsafe_allow_html=True)
+    
+    if st.session_state['current_tab'] == "Akademik":
+        st.markdown("### 📊 Database & Pengurutan Mahasiswa")
+        if mhs_list:
+            c1, c2 = st.columns(2)
+            with c1: alg = st.selectbox("Pilih Algoritma", ["Bubble Sort", "Insertion Sort"])
+            with c2: crit = st.selectbox("Kriteria Urut", ["NIM", "Nama"])
             
             t_start = time.time()
-            data_terurut = bubble_sort_mhs(db_mhs, v_crit) if v_alg == "Bubble Sort" else insertion_sort_mhs(db_mhs, v_crit)
+            data_terurut = bubble_sort_mhs(mhs_list, crit) if alg == "Bubble Sort" else insertion_sort_mhs(mhs_list, crit)
             t_end = time.time()
             
-            st.markdown(f'<div class="terminal-complexity">⚙️ {v_alg} Berhasil | Time Complexity: O(n²) | Waktu Eksekusi: {(t_end - t_start)*1000:.4f} ms</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="algo-terminal">⚙️ {alg} Aktif | Waktu Proses: {(t_end - t_start)*1000:.4f} ms</div>', unsafe_allow_html=True)
             st.dataframe(pd.DataFrame(data_terurut), use_container_width=True)
         else:
-            st.info("Sistem kosong. Silakan gunakan menu tambah data.")
-
-    # B. MENU: CARI DATA
-    elif st.session_state['current_menu'] == "Cari":
-        st.markdown("<h3 style='color:#1E293B !important;'>🔍 Pencarian Data Mahasiswa</h3>", unsafe_allow_html=True)
-        q_search = st.text_input("Ketik Kata Kunci (Nama / NIM):")
-        m_search = st.selectbox("Pilih Algoritma Pencarian", ["Linear Search", "Binary Search (Spesifik NIM)"])
-        
-        if q_search:
-            t_start = time.time()
-            if m_search == "Linear Search":
-                hasil = linear_search_mhs(db_mhs, q_search)
-                c_msg = "🔵 Linear Search Complexity: O(n)"
-            else:
-                # Simulasi Binary Search internal
-                db_sorted = sorted(db_mhs, key=lambda x: x['NIM'])
-                hasil = [d for d in db_sorted if d['NIM'] == q_search]
-                c_msg = "🟢 Binary Search Complexity: O(log n)"
-            t_end = time.time()
+            st.info("Data kosong. Silakan tambah data terlebih dahulu melalui menu Registrasi.")
             
-            st.markdown(f'<div class="terminal-complexity">{c_msg} | Waktu Eksekusi: {(t_end - t_start)*1000:.4f} ms</div>', unsafe_allow_html=True)
+    elif st.session_state['current_tab'] == "Cari":
+        st.markdown("### 🔍 Pencarian Mahasiswa")
+        key = st.text_input("Masukkan Nama atau NIM Mahasiswa:")
+        if key and mhs_list:
+            hasil = [d for d in mhs_list if key.lower() in d['Nama'].lower() or key.lower() in d['NIM'].lower()]
             if hasil: st.dataframe(pd.DataFrame(hasil), use_container_width=True)
             else: st.error("Data tidak ditemukan.")
-
-    # C. MENU: TAMBAH DATA (Try-Catch & Regex)
-    elif st.session_state['current_menu'] == "Tambah":
-        st.markdown("<h3 style='color:#1E293B !important;'>➕ Input Mahasiswa Baru</h3>", unsafe_allow_html=True)
-        with st.form("f_add"):
-            i_nim = st.text_input("NIM Mahasiswa (Wajib 8 Digit Angka)")
-            i_nama = st.text_input("Nama Lengkap")
-            i_jur = st.selectbox("Program Studi", ["Teknik Informatika", "Sistem Informasi", "Sistem Komputer"])
-            i_ang = st.number_input("Angkatan", min_value=2020, max_value=2026, value=2024)
             
-            if st.form_submit_button("Simpan Permanen"):
+    elif st.session_state['current_tab'] == "Tambah":
+        st.markdown("### ➕ Tambah Mahasiswa")
+        with st.form("add_m"):
+            nim_in = st.text_input("NIM (8 Angka)")
+            nama_in = st.text_input("Nama Lengkap")
+            jur_in = st.selectbox("Jurusan", ["Teknik Informatika", "Sistem Informasi"])
+            ang_in = st.number_input("Angkatan", min_value=2020, value=2024)
+            if st.form_submit_button("Simpan"):
                 try:
-                    if not re.match(r"^\d{8}$", i_nim):
-                        raise ValueError("Format Gagal! NIM wajib berisi tepat 8 digit angka.")
-                    if any(d['NIM'] == i_nim for d in db_mhs):
-                        raise KeyError("NIM sudah terdaftar di dalam sistem!")
-                        
-                    # Menggunakan konsep instansiasi OOP Mahasiswa
-                    obj_mhs = Mahasiswa(i_nim, i_nama, i_jur, int(i_ang))
-                    st.session_state['mahasiswa_db'].append(obj_mhs.to_dict())
-                    simpan_data_json(st.session_state['mahasiswa_db'], FILE_DATA)
-                    st.success(f"Sukses! Data {obj_mhs.get_nama()} tersimpan di array memori dan file JSON.")
-                    time.sleep(1); st.rerun()
-                except (ValueError, KeyError) as e:
-                    st.error(f"❌ Terjadi Penolakan: {e}")
-
-    # D. MENU: EDIT DATA
-    elif st.session_state['current_menu'] == "Edit":
-        st.markdown("<h3 style='color:#1E293B !important;'>🔄 Perbarui Data Mahasiswa</h3>", unsafe_allow_html=True)
-        if db_mhs:
-            nim_edit = st.selectbox("Pilih NIM Target", [d['NIM'] for d in db_mhs])
-            idx = next(i for i, d in enumerate(db_mhs) if d['NIM'] == nim_edit)
-            
-            with st.form("f_edit"):
-                u_nama = st.text_input("Nama Baru", value=db_mhs[idx]['Nama'])
-                u_jur = st.selectbox("Jurusan Baru", ["Teknik Informatika", "Sistem Informasi", "Sistem Komputer"], 
-                                     index=["Teknik Informatika", "Sistem Informasi", "Sistem Komputer"].index(db_mhs[idx]['Jurusan']))
+                    if not re.match(r"^\d{8}$", nim_in): raise ValueError("NIM harus tepat 8 digit angka murni.")
+                    if any(x['NIM'] == nim_in for x in mhs_list): raise KeyError("NIM sudah digunakan.")
+                    st.session_state['mahasiswa_db'].append({"NIM": nim_in, "Nama": nama_in, "Jurusan": jur_in, "Angkatan": int(ang_in)})
+                    save_json(st.session_state['mahasiswa_db'], FILE_DATA)
+                    st.success("Data berhasil tersimpan!"); time.sleep(0.5); st.rerun()
+                except Exception as e: st.error(f"Error: {e}")
                 
-                if st.form_submit_button("Simpan Perubahan"):
-                    st.session_state['mahasiswa_db'][idx]['Nama'] = u_nama
-                    st.session_state['mahasiswa_db'][idx]['Jurusan'] = u_jur
-                    simpan_data_json(st.session_state['mahasiswa_db'], FILE_DATA)
-                    st.success("Data berhasil dimodifikasi!")
-                    time.sleep(1); st.rerun()
+    elif st.session_state['current_tab'] == "Edit":
+        st.markdown("### 🔄 Modifikasi Data")
+        if mhs_list:
+            n_pilih = st.selectbox("Pilih NIM Target", [d['NIM'] for d in mhs_list])
+            idx = next(i for i, d in enumerate(mhs_list) if d['NIM'] == n_pilih)
+            with st.form("ed_f"):
+                nm_baru = st.text_input("Nama Baru", value=mhs_list[idx]['Nama'])
+                if st.form_submit_button("Perbarui"):
+                    st.session_state['mahasiswa_db'][idx]['Nama'] = nm_baru
+                    save_json(st.session_state['mahasiswa_db'], FILE_DATA)
+                    st.success("Berhasil diubah!"); time.sleep(0.5); st.rerun()
+                    
+    elif st.session_state['current_tab'] == "Hapus":
+        st.markdown("### ❌ Hapus Data")
+        if mhs_list:
+            n_del = st.selectbox("Pilih NIM yang akan dihapus", [d['NIM'] for d in mhs_list])
+            if st.button("HAPUS PERMANEN", type="primary"):
+                st.session_state['mahasiswa_db'] = [d for d in mhs_list if d['NIM'] != n_del]
+                save_json(st.session_state['mahasiswa_db'], FILE_DATA)
+                st.success("Terhapus!"); time.sleep(0.5); st.rerun()
+                
+    elif st.session_state['current_tab'] == "Log":
+        st.markdown("### ⚙️ Analisis Kinerja Kompleksitas")
+        st.markdown('<div class="algo-terminal">🔴 Bubble / Insertion Sort: Worst Case O(n²) | Best Case O(n)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="algo-terminal">🔵 Linear Search Complexity: O(n)</div>', unsafe_allow_html=True)
 
-    # E. MENU: HAPUS DATA
-    elif st.session_state['current_menu'] == "Hapus":
-        st.markdown("<h3 style='color:#1E293B !important;'>❌ Hapus Data Permanen</h3>", unsafe_allow_html=True)
-        if db_mhs:
-            nim_del = st.selectbox("Pilih NIM yang akan Dihapus", [d['NIM'] for d in db_mhs])
-            if st.button("HAPUS DARI JALUR MEMORI & FILE", type="primary"):
-                st.session_state['mahasiswa_db'] = [d for d in db_mhs if d['NIM'] != nim_del]
-                simpan_data_json(st.session_state['mahasiswa_db'], FILE_DATA)
-                st.success("Data sukses dieliminasi dari sistem.")
-                time.sleep(1); st.rerun()
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True) # Tutup Workspace
+    st.markdown('</div>', unsafe_allow_html=True) # Tutup Lembaran Putih Menu
+    
+    # Sidebar Minimalis untuk Logout
+    if st.sidebar.button("Keluar (Logout)", type="primary"):
+        st.session_state['logged_in'] = False
+        st.rerun()
