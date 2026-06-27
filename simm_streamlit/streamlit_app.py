@@ -141,7 +141,7 @@ def update_mahasiswa(nim, nama, prodi, ipk, status):
 
 def generate_contoh():
     sample_data = [
-        ("2010114001", "Muhammad Fitra", "Teknik Informatika", 3.85, "Aktif"),
+        ("2010114001", "Fajar Dian Taufani", "Teknik Informatika", 3.85, "Aktif"),
         ("2010114005", "Siti Aminah", "Sistem Informasi", 3.40, "Aktif"),
         ("2010114002", "Andi Wijaya", "Teknik Informatika", 2.90, "Cuti"),
         ("2010114012", "Riska Amelia", "Manajemen", 4.00, "Aktif"),
