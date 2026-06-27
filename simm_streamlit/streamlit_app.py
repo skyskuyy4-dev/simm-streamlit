@@ -243,31 +243,76 @@ def insertion_sort_mhs(daftar, kriteria):
     return arr
 
 # ==========================================
-# 🔐 RENDER: LOGIN & REGISTER (FOTO 1)
+# 🔐 RENDER: LOGIN & REGISTER (PRESISI FOTO 1)
 # ==========================================
 if not st.session_state['logged_in']:
+    # Ambil link raw login.png milik Anda untuk diekstrak logonya via CSS clipping / styling jika diperlukan, 
+    # atau kita buat susunan flexbox murni.
     st.markdown(style_exact_unpam, unsafe_allow_html=True)
+    
+    # Tambahan CSS khusus lokal untuk memaksa komponen input Streamlit berbentuk persis seperti di foto
+    st.markdown("""
+    <style>
+    /* Mengubah kotak input bawaan Streamlit agar melengkung dan background biru muda transparan sesuai foto */
+    div[data-testid="stTextInput"] div[data-basename="stTextInput"] {
+        background-color: #F0F4F8 !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 12px !important;
+        padding: 4px 12px !important;
+    }
+    div[data-testid="stTextInput"] input {
+        color: #1E293B !important;
+        font-size: 16px !important;
+    }
+    /* Mengubah tombol LOGIN Streamlit menjadi Biru Cerah & Oval Melengkung Penuh */
+    .m-login button {
+        background-color: #1A91DA !important;
+        color: white !important;
+        border-radius: 25px !important; /* Membuat bentuk melonjong di ujungnya */
+        font-weight: bold !important;
+        font-size: 15px !important;
+        padding: 12px 0px !important;
+        transition: 0.3s;
+    }
+    .m-login button:hover {
+        background-color: #1170B0 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     _, center_col, _ = st.columns([1, 1.2, 1])
     
     with center_col:
-        st.markdown('<div style="height:40px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="height:50px;"></div>', unsafe_allow_html=True)
+        
+        # Pilihan Mode Akses Portal Admin
         choice = st.radio("Akses", ["LOGIN", "REGISTRASI"], horizontal=True, label_visibility="collapsed")
         
+        # Kontainer Form Putih Utama
         st.markdown('<div class="login-container">', unsafe_allow_html=True)
+        
+        # Susunan Header: Logo Kiri (YSJ), Teks Tengah (LOGIN), Logo Kanan (UNPAM)
+        # Menggunakan teknik gambar online agar logonya asli muncul memisahkan diri
         st.markdown("""
-        <div style="text-align: center; margin-bottom: 20px;">
-    <img src="https://raw.githubusercontent.com/skyskuyy4-dev/simm-streamlit/refs/heads/main/login.png" style="max-width: 100%; height: auto; border-radius: 10px;">
-</div>
+        <div class="login-logos" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+            <img src="https://my.unpam.ac.id/assets/img/logo-sasmita.png" width="45" alt="YSJ" onerror="this.style.display='none'">
+            <div class="login-title" style="font-size: 22px; font-weight: 500; color: #1E293B; letter-spacing: 1px;">LOGIN</div>
+            <img src="https://my.unpam.ac.id/assets/img/logo-unpam.png" width="45" alt="UNPAM" onerror="this.style.display='none'">
+        </div>
         """, unsafe_allow_html=True)
         
         if choice == "LOGIN":
             st.markdown('<div class="input-label">Username *</div>', unsafe_allow_html=True)
-            u_in = st.text_input("", key="u_log", label_visibility="collapsed", placeholder="Username / NIM")
-            st.markdown('<div class="input-label">Password *</div>', unsafe_allow_html=True)
-            p_in = st.text_input("", type="password", key="p_log", label_visibility="collapsed", placeholder="••••••••")
+            u_in = st.text_input("", key="u_log", label_visibility="collapsed", placeholder="Masukkan Username / NIM")
             
+            st.markdown('<div class="input-label">Password *</div>', unsafe_allow_html=True)
+            p_in = st.text_input("", type="password", key="p_log", label_visibility="collapsed", placeholder="Masukkan Password")
+            
+            st.markdown('<div style="height: 15px;"></div>', unsafe_allow_html=True)
+            
+            # Tombol Eksekusi Login
             st.markdown('<div class="m-login">', unsafe_allow_html=True)
-            if st.button("LOGIN", key="btn_submit_l"):
+            if st.button("LOGIN", key="btn_submit_l", use_container_width=True):
                 user = next((x for x in st.session_state['users_db'] if x['username'] == u_in), None)
                 if user and user['password'] == p_in:
                     st.session_state['logged_in'] = True
@@ -278,25 +323,27 @@ if not st.session_state['logged_in']:
                     st.session_state['err_msg'] = "Akun anda sudah tidak terdaftar atau password salah"
                     st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
+            
         else:
             st.markdown('<div class="input-label">Username Baru *</div>', unsafe_allow_html=True)
             u_reg = st.text_input("", key="u_reg", label_visibility="collapsed")
             st.markdown('<div class="input-label">Password Baru *</div>', unsafe_allow_html=True)
             p_reg = st.text_input("", type="password", key="p_reg", label_visibility="collapsed")
             
+            st.markdown('<div style="height: 15px;"></div>', unsafe_allow_html=True)
             st.markdown('<div class="m-login">', unsafe_allow_html=True)
-            if st.button("DAFTAR", key="btn_submit_r"):
+            if st.button("DAFTAR ADMIN", key="btn_submit_r", use_container_width=True):
                 if u_reg and p_reg:
                     st.session_state['users_db'].append({"username": u_reg, "password": p_reg})
                     save_json(st.session_state['users_db'], FILE_USERS)
                     st.success("Berhasil didaftarkan! Silakan pindah ke tab LOGIN.")
             st.markdown('</div>', unsafe_allow_html=True)
             
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True) # Tutup Login Container
         
+        # Banner Merah Error Persis di Sisi Paling Bawah Layar Form
         if st.session_state['err_msg']:
-            st.markdown(f'<div class="error-banner-unpam">{st.session_state["err_msg"]}</div>', unsafe_allow_html=True)
-
+            st.markdown(f'<div class="error-banner-unpam" style="background-color: #991B1B; color: white; padding: 12px; border-radius: 8px; font-size: 14px; margin-top: 20px; font-weight: 500;">{st.session_state["err_msg"]}</div>', unsafe_allow_html=True)
 # ==========================================
 # 📊 RENDER: DASHBOARD REPLIKASI (FOTO 2)
 # ==========================================
