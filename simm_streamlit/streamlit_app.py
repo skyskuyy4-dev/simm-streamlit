@@ -1,6 +1,6 @@
 """
 SIMM - Sistem Informasi Manajemen Mahasiswa
-Dengan Fitur Login & Registrasi
+Dengan Fitur Login & Registrasi (Tanpa Demo Akun)
 """
 
 import streamlit as st
@@ -49,7 +49,7 @@ class DatabaseManager:
             conn = self._get_connection()
             cursor = conn.cursor()
             
-            # Tabel users dengan tambahan kolom
+            # Tabel users
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
@@ -70,12 +70,6 @@ class DatabaseManager:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-            
-            # Default admin user
-            cursor.execute(
-                "INSERT OR IGNORE INTO users (username, password, nama_lengkap) VALUES (?, ?, ?)",
-                ('admin', 'admin123', 'Administrator')
-            )
             
             conn.commit()
             conn.close()
@@ -409,7 +403,7 @@ class AuthManager:
             return None
 
 # ============================================================================
-# STREAMLIT UI - DENGAN REGISTRASI
+# STREAMLIT UI - DENGAN REGISTRASI (TANPA DEMO)
 # ============================================================================
 
 class StreamlitUI:
@@ -475,37 +469,6 @@ class StreamlitUI:
                     margin: 0 auto;
                 }
                 
-                .tab-button {
-                    padding: 10px 20px;
-                    border: none;
-                    border-radius: 10px;
-                    cursor: pointer;
-                    font-weight: bold;
-                    transition: all 0.3s;
-                }
-                
-                .tab-button.active {
-                    background: #667eea;
-                    color: white;
-                }
-                
-                .tab-button.inactive {
-                    background: #e5e7eb;
-                    color: #6b7280;
-                }
-                
-                .tab-button:hover {
-                    transform: translateY(-2px);
-                }
-                
-                .demo-box {
-                    text-align: center;
-                    margin-top: 20px;
-                    padding: 15px;
-                    background: #f3f4f6;
-                    border-radius: 10px;
-                }
-                
                 .search-box {
                     background: white;
                     padding: 30px;
@@ -565,6 +528,29 @@ class StreamlitUI:
                     display: inline-block;
                     margin: 5px 0;
                 }
+                
+                .tab-active {
+                    text-align: center;
+                    padding: 10px;
+                    background: #667eea;
+                    border-radius: 10px;
+                    color: white;
+                    font-weight: bold;
+                }
+                
+                .tab-inactive {
+                    text-align: center;
+                    padding: 10px;
+                    background: #e5e7eb;
+                    border-radius: 10px;
+                    color: #6b7280;
+                    font-weight: bold;
+                    cursor: pointer;
+                }
+                
+                .tab-inactive:hover {
+                    background: #d1d5db;
+                }
             </style>
         """, unsafe_allow_html=True)
     
@@ -578,14 +564,14 @@ class StreamlitUI:
             </div>
         """, unsafe_allow_html=True)
         
-        # Tabs dengan CSS manual untuk tampilan lebih baik
+        # Tabs dengan tombol interaktif
         col1, col2 = st.columns(2)
         
         with col1:
             if not st.session_state.get('show_register', False):
                 st.markdown("""
-                    <div style="text-align: center; padding: 10px; background: #667eea; border-radius: 10px; color: white;">
-                        <strong>🔐 LOGIN</strong>
+                    <div class="tab-active">
+                        🔐 LOGIN
                     </div>
                 """, unsafe_allow_html=True)
             else:
@@ -596,8 +582,8 @@ class StreamlitUI:
         with col2:
             if st.session_state.get('show_register', False):
                 st.markdown("""
-                    <div style="text-align: center; padding: 10px; background: #667eea; border-radius: 10px; color: white;">
-                        <strong>📝 REGISTER</strong>
+                    <div class="tab-active">
+                        📝 REGISTER
                     </div>
                 """, unsafe_allow_html=True)
             else:
@@ -622,7 +608,7 @@ class StreamlitUI:
             username = st.text_input(
                 "Username",
                 placeholder="Masukkan username Anda",
-                help="Gunakan username yang sudah terdaftar"
+                help="Masukkan username yang sudah terdaftar"
             )
             
             password = st.text_input(
@@ -646,16 +632,16 @@ class StreamlitUI:
                     else:
                         st.error(msg)
         
-        # Info demo
+        # Link ke register
         st.markdown("""
-            <div class="demo-box">
-                <p style="margin: 0; font-size: 0.9rem;">
-                    📝 <strong>Demo Akun:</strong><br>
-                    Username: <code>admin</code><br>
-                    Password: <code>admin123</code>
-                </p>
-                <p style="margin: 10px 0 0 0; font-size: 0.85rem; color: #6b7280;">
-                    💡 Belum punya akun? Klik <strong>Register</strong> di atas
+            <div style="text-align: center; margin-top: 15px;">
+                <p style="color: #6b7280; font-size: 0.9rem;">
+                    Belum punya akun? 
+                    <a href="#" onclick="window.location.reload(); 
+                    sessionStorage.setItem('show_register', 'true')" 
+                    style="color: #667eea; text-decoration: none; font-weight: bold;">
+                        Daftar di sini
+                    </a>
                 </p>
             </div>
         """, unsafe_allow_html=True)
@@ -720,9 +706,9 @@ class StreamlitUI:
                     )
                     if success:
                         st.success(msg)
+                        st.balloons()
                         # Setelah registrasi berhasil, balik ke login
                         st.session_state.show_register = False
-                        st.balloons()
                         st.rerun()
                     else:
                         st.error(msg)
@@ -910,7 +896,7 @@ class StreamlitUI:
             st.warning("Tidak ada data yang cocok.")
     
     def _render_search(self):
-        """Halaman Pencarian - SUPER SIMPLE"""
+        """Halaman Pencarian"""
         st.markdown("""
             <div class="main-header">
                 <h1>🔍 Cari Mahasiswa</h1>
@@ -1008,132 +994,4 @@ class StreamlitUI:
                             <p style="margin: 5px 0; font-size: 0.9rem;">
                                 Sistem pilih metode terbaik:
                             </p>
-                            <ul style="font-size: 0.85rem;">
-                                <li><strong>NIM</strong> → Binary Search</li>
-                                <li><strong>Nama/Prodi</strong> → Sequential Search</li>
-                            </ul>
-                            <small style="color: #64748b;">⚡ Paling mudah</small>
-                        </div>
-                        
-                        <div style="background: white; padding: 15px; border-radius: 10px; border-left: 4px solid #10b981;">
-                            <h5>🚀 Cepat <span class="badge badge-blue">Binary</span></h5>
-                            <p style="margin: 5px 0; font-size: 0.9rem;">
-                                Mencari dengan membagi data.
-                            </p>
-                            <ul style="font-size: 0.85rem;">
-                                <li><strong>Kecepatan:</strong> Sangat Cepat</li>
-                                <li><strong>Kompleksitas:</strong> O(log n)</li>
-                                <li><strong>Cocok:</strong> Data > 100</li>
-                            </ul>
-                        </div>
-                        
-                        <div style="background: white; padding: 15px; border-radius: 10px; border-left: 4px solid #f59e0b;">
-                            <h5>🔍 Fleksibel <span class="badge badge-orange">Sequential</span></h5>
-                            <p style="margin: 5px 0; font-size: 0.9rem;">
-                                Mencari di semua field.
-                            </p>
-                            <ul style="font-size: 0.85rem;">
-                                <li><strong>Kecepatan:</strong> Cukup Cepat</li>
-                                <li><strong>Kompleksitas:</strong> O(n)</li>
-                                <li><strong>Cocok:</strong> Pencarian fleksibel</li>
-                            </ul>
-                        </div>
-                        
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-        
-        with st.expander("💡 Contoh Pencarian", expanded=False):
-            st.markdown("""
-                <div style="background: #f1f5f9; padding: 15px; border-radius: 10px;">
-                    <h4>📝 Coba cari dengan kata kunci berikut:</h4>
-                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
-                        <span class="badge badge-blue">2010114001</span>
-                        <span class="badge badge-blue">Fajar</span>
-                        <span class="badge badge-blue">Informatika</span>
-                        <span class="badge badge-blue">Aktif</span>
-                        <span class="badge badge-blue">Siti</span>
-                        <span class="badge badge-blue">Manajemen</span>
-                        <span class="badge badge-blue">3.85</span>
-                        <span class="badge badge-blue">Cuti</span>
-                    </div>
-                    <p style="margin-top: 10px; font-size: 0.9rem; color: #64748b;">
-                        💡 Tips: Bisa cari dengan NIM, Nama, Prodi, atau Status.
-                    </p>
-                </div>
-            """, unsafe_allow_html=True)
-    
-    def _render_statistik(self):
-        st.markdown("""
-            <div class="main-header">
-                <h1>📊 Statistik</h1>
-                <p>Analisis data mahasiswa</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        data = self.mahasiswa.get_all()
-        
-        if not data:
-            st.info("Belum ada data. Generate contoh data terlebih dahulu.")
-            return
-        
-        col1, col2, col3 = st.columns(3)
-        
-        total = len(data)
-        aktif = len([d for d in data if d['status'] == 'Aktif'])
-        avg_ipk = sum(d['ipk'] for d in data) / total
-        
-        with col1:
-            st.metric("📊 Total", total)
-        with col2:
-            st.metric("✅ Aktif", aktif)
-        with col3:
-            st.metric("⭐ Rata-rata IPK", f"{avg_ipk:.2f}")
-        
-        st.subheader("📊 Distribusi Status")
-        status_counts = {}
-        for item in data:
-            status_counts[item['status']] = status_counts.get(item['status'], 0) + 1
-        
-        df_status = pd.DataFrame(list(status_counts.items()), columns=['Status', 'Jumlah'])
-        fig = px.pie(df_status, values='Jumlah', names='Status', hole=0.3)
-        fig.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig, use_container_width=True)
-    
-    def run(self):
-        st.markdown("""
-            <div class="main-header">
-                <h1>🎓 SIMM - Sistem Informasi Mahasiswa</h1>
-                <p>Universitas Pamulang</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Jika belum login, tampilkan halaman login/register
-        if not st.session_state.logged_in:
-            self._render_login_register()
-            return
-        
-        # Jika sudah login, tampilkan menu utama
-        menu = self._render_sidebar()
-        
-        if menu == "🏠 Dashboard":
-            self._render_dashboard()
-        elif menu == "➕ Tambah Data":
-            self._render_tambah()
-        elif menu == "📋 Data Mahasiswa":
-            self._render_data()
-        elif menu == "🔍 Cari Mahasiswa":
-            self._render_search()
-        elif menu == "📊 Statistik":
-            self._render_statistik()
-
-# ============================================================================
-# MAIN
-# ============================================================================
-
-def main():
-    app = StreamlitUI()
-    app.run()
-
-if __name__ == "__main__":
-    main()
+                           
