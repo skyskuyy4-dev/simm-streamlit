@@ -1,8 +1,6 @@
 """
 SIMM - Sistem Informasi Manajemen Mahasiswa
-Universitas Pamulang
-
-Aplikasi dengan tampilan clean dan terstruktur untuk admin
+Dengan Fitur Login & Registrasi
 """
 
 import streamlit as st
@@ -12,22 +10,21 @@ import plotly.express as px
 import re
 from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime
-from abc import ABC, abstractmethod
 
 # ============================================================================
-# KONFIGURASI APLIKASI
+# KONFIGURASI
 # ============================================================================
 
 class Config:
-    """Konfigurasi aplikasi"""
     DB_NAME = 'database.db'
     PAGE_TITLE = "SIMM - Sistem Informasi Mahasiswa"
     PAGE_ICON = "🎓"
     
-    # Regex Patterns
+    # Regex Patterns untuk validasi
     NIM_PATTERN = r'^[0-9]{10,12}$'
     NAMA_PATTERN = r'^[A-Za-z\s]{2,50}$'
-    IPK_PATTERN = r'^[0-4](\.\d{1,2})?$'
+    USERNAME_PATTERN = r'^[A-Za-z0-9_]{3,20}$'
+    PASSWORD_PATTERN = r'^.{4,}$'  # Minimal 4 karakter
     
     PRODI_LIST = [
         "Teknik Informatika", "Sistem Informasi", "Manajemen Informatika",
@@ -37,110 +34,28 @@ class Config:
     STATUS_LIST = ["Aktif", "Pasif", "Cuti"]
 
 # ============================================================================
-# CUSTOM EXCEPTION
-# ============================================================================
-
-class ValidationError(Exception):
-    pass
-
-class DatabaseError(Exception):
-    pass
-
-# ============================================================================
-# CLASS MAHASISWA (OOP)
-# ============================================================================
-
-class Mahasiswa:
-    """Class Mahasiswa dengan Encapsulation"""
-    
-    def __init__(self, nim: str, nama: str, prodi: str, ipk: float, status: str = "Aktif"):
-        self.__nim = nim
-        self.__nama = nama
-        self.__prodi = prodi
-        self.__ipk = ipk
-        self.__status = status
-    
-    # GETTERS
-    def get_nim(self) -> str:
-        return self.__nim
-    
-    def get_nama(self) -> str:
-        return self.__nama
-    
-    def get_prodi(self) -> str:
-        return self.__prodi
-    
-    def get_ipk(self) -> float:
-        return self.__ipk
-    
-    def get_status(self) -> str:
-        return self.__status
-    
-    # SETTERS dengan Validasi
-    def set_nama(self, nama: str) -> None:
-        if not re.match(Config.NAMA_PATTERN, nama):
-            raise ValidationError("Nama hanya boleh huruf dan spasi (2-50 karakter)!")
-        self.__nama = nama
-    
-    def set_ipk(self, ipk: float) -> None:
-        if not 0.0 <= ipk <= 4.0:
-            raise ValidationError("IPK harus antara 0.00 - 4.00!")
-        self.__ipk = ipk
-    
-    def to_dict(self) -> Dict:
-        return {
-            'nim': self.__nim,
-            'nama': self.__nama,
-            'prodi': self.__prodi,
-            'ipk': self.__ipk,
-            'status': self.__status
-        }
-    
-    @staticmethod
-    def validate_nim(nim: str) -> bool:
-        return bool(re.match(Config.NIM_PATTERN, nim))
-
-# ============================================================================
-# CLASS MAHASISWA AKTIF (Inheritance)
-# ============================================================================
-
-class MahasiswaAktif(Mahasiswa):
-    def __init__(self, nim: str, nama: str, prodi: str, ipk: float):
-        super().__init__(nim, nama, prodi, ipk, "Aktif")
-        self.__semester = 1
-    
-    def get_semester(self) -> int:
-        return self.__semester
-    
-    def set_semester(self, semester: int) -> None:
-        if semester < 1:
-            raise ValidationError("Semester minimal 1!")
-        self.__semester = semester
-
-# ============================================================================
-# CLASS DATABASE MANAGER
+# DATABASE MANAGER
 # ============================================================================
 
 class DatabaseManager:
-    """Manajemen database"""
-    
     def __init__(self):
-        self.__db_name = Config.DB_NAME
         self._init_database()
     
     def _get_connection(self):
-        return sqlite3.connect(self.__db_name)
+        return sqlite3.connect(Config.DB_NAME)
     
     def _init_database(self):
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
             
-            # Tabel users
+            # Tabel users dengan tambahan kolom
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
-                    password TEXT NOT NULL
+                    password TEXT NOT NULL,
+                    nama_lengkap TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             
@@ -151,20 +66,21 @@ class DatabaseManager:
                     nama TEXT NOT NULL,
                     prodi TEXT NOT NULL,
                     ipk REAL NOT NULL,
-                    status TEXT NOT NULL
+                    status TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             
-            # Default user
+            # Default admin user
             cursor.execute(
-                "INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)",
-                ('admin', 'admin123')
+                "INSERT OR IGNORE INTO users (username, password, nama_lengkap) VALUES (?, ?, ?)",
+                ('admin', 'admin123', 'Administrator')
             )
             
             conn.commit()
             conn.close()
         except Exception as e:
-            raise DatabaseError(f"Gagal inisialisasi database: {str(e)}")
+            st.error(f"Error database: {str(e)}")
     
     def execute_query(self, query: str, params: tuple = ()) -> List[tuple]:
         try:
@@ -175,7 +91,8 @@ class DatabaseManager:
             conn.close()
             return result
         except Exception as e:
-            raise DatabaseError(f"Error query: {str(e)}")
+            st.error(f"Error query: {str(e)}")
+            return []
     
     def execute_update(self, query: str, params: tuple = ()) -> int:
         try:
@@ -187,72 +104,65 @@ class DatabaseManager:
             conn.close()
             return affected
         except Exception as e:
-            raise DatabaseError(f"Error update: {str(e)}")
+            st.error(f"Error update: {str(e)}")
+            return 0
 
 # ============================================================================
-# CLASS SEARCH ALGORITHMS
+# ALGORITMA PENCARIAN
 # ============================================================================
 
-class SearchAlgorithms:
-    """Algoritma Pencarian"""
-    
+class SimpleSearch:
     @staticmethod
-    def linear_search(data: List[Dict], key: str, value: Any) -> Optional[Dict]:
-        """
-        Linear Search - O(n)
-        Mencari data satu per satu dari awal sampai ketemu
-        """
-        for item in data:
-            if str(item.get(key, '')).lower() == str(value).lower():
-                return item
-        return None
-    
-    @staticmethod
-    def linear_search_all(data: List[Dict], key: str, value: Any) -> List[Dict]:
-        """
-        Linear Search All - O(n)
-        Mencari semua data yang cocok
-        """
+    def linear_search(data: List[Dict], keyword: str) -> List[Dict]:
+        """Linear Search - Mencari satu per satu"""
         results = []
+        keyword_lower = keyword.lower()
+        
         for item in data:
-            if str(item.get(key, '')).lower() == str(value).lower():
+            if (keyword_lower in str(item['nim']).lower() or
+                keyword_lower in str(item['nama']).lower() or
+                keyword_lower in str(item['prodi']).lower() or
+                keyword_lower in str(item['status']).lower()):
                 results.append(item)
+        
         return results
     
     @staticmethod
-    def binary_search(data: List[Dict], key: str, value: Any) -> Optional[Dict]:
-        """
-        Binary Search - O(log n)
-        Mencari data dengan membagi array menjadi 2 bagian (data harus terurut)
-        """
+    def binary_search(data: List[Dict], keyword: str, search_by: str = 'nim') -> List[Dict]:
+        """Binary Search - Mencari dengan membagi data"""
         if not data:
-            return None
+            return []
         
-        # Sort data by key
-        sorted_data = sorted(data, key=lambda x: str(x.get(key, '')).lower())
-        
+        sorted_data = sorted(data, key=lambda x: str(x[search_by]).lower())
         low, high = 0, len(sorted_data) - 1
-        search_value = str(value).lower()
+        keyword_lower = keyword.lower()
+        results = []
         
         while low <= high:
             mid = (low + high) // 2
-            mid_value = str(sorted_data[mid].get(key, '')).lower()
+            mid_value = str(sorted_data[mid][search_by]).lower()
             
-            if mid_value == search_value:
-                return sorted_data[mid]
-            elif mid_value < search_value:
-                low = mid + 1
-            else:
+            if keyword_lower == mid_value:
+                results.append(sorted_data[mid])
+                left = mid - 1
+                while left >= 0 and str(sorted_data[left][search_by]).lower() == keyword_lower:
+                    results.append(sorted_data[left])
+                    left -= 1
+                right = mid + 1
+                while right < len(sorted_data) and str(sorted_data[right][search_by]).lower() == keyword_lower:
+                    results.append(sorted_data[right])
+                    right += 1
+                break
+            elif keyword_lower < mid_value:
                 high = mid - 1
+            else:
+                low = mid + 1
         
-        return None
+        return results
     
     @staticmethod
-    def sequential_search(data: List[Dict], keyword: str) -> List[Dict]:
-        """
-        Sequential Search - O(n)
-        Mencari data dengan keyword di semua field
-        """
+    def search_all_fields(data: List[Dict], keyword: str) -> List[Dict]:
+        """Sequential Search - Mencari di semua field"""
         results = []
         keyword_lower = keyword.lower()
         
@@ -265,144 +175,16 @@ class SearchAlgorithms:
         return results
 
 # ============================================================================
-# CLASS SORTING ALGORITHMS
-# ============================================================================
-
-class SortingAlgorithms:
-    """Algoritma Pengurutan"""
-    
-    @staticmethod
-    def bubble_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
-        """
-        Bubble Sort - O(n²)
-        Membandingkan elemen bersebelahan dan menukar jika tidak sesuai
-        """
-        arr = data.copy()
-        n = len(arr)
-        
-        for i in range(n):
-            swapped = False
-            for j in range(0, n - i - 1):
-                val1 = str(arr[j].get(key, '')).lower()
-                val2 = str(arr[j + 1].get(key, '')).lower()
-                
-                if (val1 > val2 and not reverse) or (val1 < val2 and reverse):
-                    arr[j], arr[j + 1] = arr[j + 1], arr[j]
-                    swapped = True
-            
-            if not swapped:
-                break
-        
-        return arr
-    
-    @staticmethod
-    def insertion_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
-        """
-        Insertion Sort - O(n²)
-        Membangun array terurut satu per satu
-        """
-        arr = data.copy()
-        
-        for i in range(1, len(arr)):
-            key_item = arr[i]
-            j = i - 1
-            
-            while j >= 0:
-                val1 = str(arr[j].get(key, '')).lower()
-                val2 = str(key_item.get(key, '')).lower()
-                
-                if (val1 > val2 and not reverse) or (val1 < val2 and reverse):
-                    arr[j + 1] = arr[j]
-                    j -= 1
-                else:
-                    break
-            
-            arr[j + 1] = key_item
-        
-        return arr
-    
-    @staticmethod
-    def merge_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
-        """
-        Merge Sort - O(n log n)
-        Membagi array menjadi 2 bagian, urutkan, lalu gabungkan
-        """
-        arr = data.copy()
-        
-        if len(arr) <= 1:
-            return arr
-        
-        mid = len(arr) // 2
-        left = SortingAlgorithms.merge_sort(arr[:mid], key, reverse)
-        right = SortingAlgorithms.merge_sort(arr[mid:], key, reverse)
-        
-        return SortingAlgorithms._merge(left, right, key, reverse)
-    
-    @staticmethod
-    def _merge(left: List[Dict], right: List[Dict], key: str, reverse: bool) -> List[Dict]:
-        result = []
-        i = j = 0
-        
-        while i < len(left) and j < len(right):
-            val1 = str(left[i].get(key, '')).lower()
-            val2 = str(right[j].get(key, '')).lower()
-            
-            if (val1 <= val2 and not reverse) or (val1 >= val2 and reverse):
-                result.append(left[i])
-                i += 1
-            else:
-                result.append(right[j])
-                j += 1
-        
-        result.extend(left[i:])
-        result.extend(right[j:])
-        return result
-    
-    @staticmethod
-    def shell_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
-        """
-        Shell Sort - O(n log n)
-        Versi perbaikan dari insertion sort dengan gap
-        """
-        arr = data.copy()
-        n = len(arr)
-        gap = n // 2
-        
-        while gap > 0:
-            for i in range(gap, n):
-                temp = arr[i]
-                j = i
-                
-                while j >= gap:
-                    val1 = str(arr[j - gap].get(key, '')).lower()
-                    val2 = str(temp.get(key, '')).lower()
-                    
-                    if (val1 > val2 and not reverse) or (val1 < val2 and reverse):
-                        arr[j] = arr[j - gap]
-                        j -= gap
-                    else:
-                        break
-                
-                arr[j] = temp
-            
-            gap //= 2
-        
-        return arr
-
-# ============================================================================
-# CLASS MAHASISWA MANAGER
+# MAHASISWA MANAGER
 # ============================================================================
 
 class MahasiswaManager:
-    """Manager untuk operasi CRUD Mahasiswa"""
-    
     def __init__(self):
         self.__db = DatabaseManager()
         self.__data: List[Dict] = []
         self._load_data()
     
     def _load_data(self):
-        """Load data dari database"""
         try:
             result = self.__db.execute_query("SELECT * FROM mahasiswa")
             self.__data = [
@@ -414,59 +196,81 @@ class MahasiswaManager:
             self.__data = []
     
     def get_all(self) -> List[Dict]:
-        """Mendapatkan semua data - O(1)"""
         return self.__data
     
-    def get_by_nim(self, nim: str) -> Optional[Dict]:
-        """Cari berdasarkan NIM - O(n)"""
-        return SearchAlgorithms.linear_search(self.__data, 'nim', nim)
+    def search(self, keyword: str, method: str = 'auto') -> Tuple[List[Dict], str, str]:
+        if not keyword or not keyword.strip():
+            return self.__data, "Tidak ada pencarian", "-"
+        
+        keyword = keyword.strip()
+        
+        if method == 'auto':
+            if re.match(r'^[0-9]{10,12}$', keyword):
+                results = SimpleSearch.binary_search(self.__data, keyword, 'nim')
+                return results, "Binary Search (NIM)", "O(log n) - Sangat Cepat"
+            else:
+                results = SimpleSearch.search_all_fields(self.__data, keyword)
+                return results, "Sequential Search (Fleksibel)", "O(n) - Cukup Cepat"
+        
+        elif method == 'linear':
+            results = SimpleSearch.linear_search(self.__data, keyword)
+            return results, "Linear Search", "O(n) - Cukup Cepat"
+        
+        elif method == 'binary':
+            results = SimpleSearch.binary_search(self.__data, keyword, 'nim')
+            if not results:
+                results = SimpleSearch.binary_search(self.__data, keyword, 'nama')
+            return results, "Binary Search", "O(log n) - Sangat Cepat"
+        
+        else:  # sequential
+            results = SimpleSearch.search_all_fields(self.__data, keyword)
+            return results, "Sequential Search", "O(n) - Cukup Cepat"
     
     def tambah(self, nim: str, nama: str, prodi: str, ipk: float, status: str) -> Tuple[bool, str]:
-        """Tambah data - O(1)"""
         try:
-            # Validasi
-            if not Mahasiswa.validate_nim(nim):
-                raise ValidationError("NIM harus 10-12 digit angka!")
+            if not re.match(Config.NIM_PATTERN, nim):
+                return False, "❌ NIM harus 10-12 digit angka!"
             
             if not re.match(Config.NAMA_PATTERN, nama):
-                raise ValidationError("Nama hanya boleh huruf dan spasi!")
+                return False, "❌ Nama hanya boleh huruf dan spasi (2-50 karakter)!"
             
             if not 0.0 <= ipk <= 4.0:
-                raise ValidationError("IPK harus 0.00 - 4.00!")
+                return False, "❌ IPK harus 0.00 - 4.00!"
             
-            if self.get_by_nim(nim):
-                raise ValidationError("NIM sudah terdaftar!")
+            for item in self.__data:
+                if item['nim'] == nim:
+                    return False, "❌ NIM sudah terdaftar!"
             
-            # Simpan
             query = "INSERT INTO mahasiswa (nim, nama, prodi, ipk, status) VALUES (?, ?, ?, ?, ?)"
             self.__db.execute_update(query, (nim, nama, prodi, ipk, status))
             
-            # Update cache
             self.__data.append({'nim': nim, 'nama': nama, 'prodi': prodi, 'ipk': ipk, 'status': status})
             
             return True, "✅ Data berhasil ditambahkan!"
             
-        except (ValidationError, DatabaseError) as e:
-            return False, f"❌ {str(e)}"
         except Exception as e:
             return False, f"❌ Terjadi kesalahan: {str(e)}"
     
     def update(self, nim: str, nama: str, prodi: str, ipk: float, status: str) -> Tuple[bool, str]:
-        """Update data - O(n)"""
         try:
-            if not self.get_by_nim(nim):
-                raise ValidationError("NIM tidak ditemukan!")
+            found = False
+            for item in self.__data:
+                if item['nim'] == nim:
+                    found = True
+                    break
+            
+            if not found:
+                return False, "❌ NIM tidak ditemukan!"
             
             if not re.match(Config.NAMA_PATTERN, nama):
-                raise ValidationError("Nama hanya boleh huruf dan spasi!")
+                return False, "❌ Nama hanya boleh huruf dan spasi (2-50 karakter)!"
             
             if not 0.0 <= ipk <= 4.0:
-                raise ValidationError("IPK harus 0.00 - 4.00!")
+                return False, "❌ IPK harus 0.00 - 4.00!"
             
             query = "UPDATE mahasiswa SET nama=?, prodi=?, ipk=?, status=? WHERE nim=?"
             self.__db.execute_update(query, (nama, prodi, ipk, status, nim))
             
-            # Update cache
             for item in self.__data:
                 if item['nim'] == nim:
                     item.update({'nama': nama, 'prodi': prodi, 'ipk': ipk, 'status': status})
@@ -474,32 +278,31 @@ class MahasiswaManager:
             
             return True, "✅ Data berhasil diupdate!"
             
-        except (ValidationError, DatabaseError) as e:
-            return False, f"❌ {str(e)}"
         except Exception as e:
             return False, f"❌ Terjadi kesalahan: {str(e)}"
     
     def hapus(self, nim: str) -> Tuple[bool, str]:
-        """Hapus data - O(n)"""
         try:
-            if not self.get_by_nim(nim):
-                raise ValidationError("NIM tidak ditemukan!")
+            found = False
+            for item in self.__data:
+                if item['nim'] == nim:
+                    found = True
+                    break
+            
+            if not found:
+                return False, "❌ NIM tidak ditemukan!"
             
             query = "DELETE FROM mahasiswa WHERE nim = ?"
             self.__db.execute_update(query, (nim,))
             
-            # Update cache
             self.__data = [item for item in self.__data if item['nim'] != nim]
             
             return True, "✅ Data berhasil dihapus!"
             
-        except (ValidationError, DatabaseError) as e:
-            return False, f"❌ {str(e)}"
         except Exception as e:
             return False, f"❌ Terjadi kesalahan: {str(e)}"
     
     def generate_contoh(self) -> Tuple[bool, str]:
-        """Generate data contoh"""
         sample_data = [
             ("2010114001", "Fajar Dian Taufani", "Teknik Informatika", 3.85, "Aktif"),
             ("2010114005", "Siti Aminah", "Sistem Informasi", 3.40, "Aktif"),
@@ -507,7 +310,9 @@ class MahasiswaManager:
             ("2010114012", "Riska Amelia", "Manajemen", 4.00, "Aktif"),
             ("2010114009", "Budi Santoso", "Akuntansi", 3.15, "Pasif"),
             ("2010114015", "Dewi Lestari", "Teknik Informatika", 3.60, "Aktif"),
-            ("2010114020", "Rahmat Hidayat", "Sistem Informasi", 2.75, "Aktif")
+            ("2010114020", "Rahmat Hidayat", "Sistem Informasi", 2.75, "Aktif"),
+            ("2010114025", "Putri Wulandari", "Manajemen", 3.90, "Aktif"),
+            ("2010114030", "Ahmad Rizki", "Teknik Komputer", 3.45, "Pasif"),
         ]
         
         added = 0
@@ -519,34 +324,95 @@ class MahasiswaManager:
         return True, f"✅ {added} data contoh berhasil ditambahkan!"
 
 # ============================================================================
-# CLASS AUTH MANAGER
+# AUTH MANAGER (DENGAN REGISTRASI)
 # ============================================================================
 
 class AuthManager:
-    """Manajemen autentikasi"""
-    
     def __init__(self):
         self.__db = DatabaseManager()
     
     def login(self, username: str, password: str) -> Tuple[bool, str]:
+        """Login user"""
         try:
             query = "SELECT * FROM users WHERE username = ? AND password = ?"
             result = self.__db.execute_query(query, (username, password))
             
             if result:
-                return True, "Login berhasil!"
-            return False, "Username atau password salah!"
+                return True, f"✅ Selamat datang, {result[0][2] or username}!"
+            return False, "❌ Username atau password salah!"
             
-        except DatabaseError as e:
-            return False, str(e)
+        except Exception as e:
+            return False, f"❌ Terjadi kesalahan: {str(e)}"
+    
+    def register(self, username: str, password: str, confirm_password: str, 
+                 nama_lengkap: str = "") -> Tuple[bool, str]:
+        """
+        Registrasi user baru dengan validasi
+        """
+        try:
+            # Validasi Username dengan Regex
+            if not username or not username.strip():
+                return False, "❌ Username harus diisi!"
+            
+            if not re.match(Config.USERNAME_PATTERN, username):
+                return False, "❌ Username harus 3-20 karakter (huruf, angka, underscore)!"
+            
+            # Validasi Password
+            if not password or not password.strip():
+                return False, "❌ Password harus diisi!"
+            
+            if not re.match(Config.PASSWORD_PATTERN, password):
+                return False, "❌ Password minimal 4 karakter!"
+            
+            # Cek konfirmasi password
+            if password != confirm_password:
+                return False, "❌ Password tidak cocok!"
+            
+            # Cek username sudah terdaftar
+            check_query = "SELECT * FROM users WHERE username = ?"
+            existing = self.__db.execute_query(check_query, (username,))
+            if existing:
+                return False, "❌ Username sudah terdaftar!"
+            
+            # Validasi Nama Lengkap (opsional)
+            if nama_lengkap and not re.match(Config.NAMA_PATTERN, nama_lengkap):
+                return False, "❌ Nama lengkap hanya boleh huruf dan spasi!"
+            
+            # Insert user baru
+            insert_query = """
+                INSERT INTO users (username, password, nama_lengkap) 
+                VALUES (?, ?, ?)
+            """
+            self.__db.execute_update(
+                insert_query, 
+                (username, password, nama_lengkap if nama_lengkap else username)
+            )
+            
+            return True, "✅ Registrasi berhasil! Silakan login."
+            
+        except Exception as e:
+            return False, f"❌ Terjadi kesalahan: {str(e)}"
+    
+    def get_user_info(self, username: str) -> Optional[Dict]:
+        """Mendapatkan informasi user"""
+        try:
+            query = "SELECT * FROM users WHERE username = ?"
+            result = self.__db.execute_query(query, (username,))
+            if result:
+                return {
+                    'username': result[0][0],
+                    'nama_lengkap': result[0][2],
+                    'created_at': result[0][3]
+                }
+            return None
+        except:
+            return None
 
 # ============================================================================
-# STREAMLIT UI - CLEAN & TERSTRUKTUR
+# STREAMLIT UI - DENGAN REGISTRASI
 # ============================================================================
 
 class StreamlitUI:
-    """UI Streamlit dengan tampilan clean"""
-    
     def __init__(self):
         self.mahasiswa = MahasiswaManager()
         self.auth = AuthManager()
@@ -554,13 +420,12 @@ class StreamlitUI:
         self._setup_page()
     
     def _init_session(self):
-        """Inisialisasi session state"""
         if 'logged_in' not in st.session_state:
             st.session_state.logged_in = False
             st.session_state.username = ""
+            st.session_state.show_register = False
     
     def _setup_page(self):
-        """Setup halaman"""
         st.set_page_config(
             page_title=Config.PAGE_TITLE,
             page_icon=Config.PAGE_ICON,
@@ -570,7 +435,6 @@ class StreamlitUI:
         # CSS Custom
         st.markdown("""
             <style>
-                /* Header */
                 .main-header {
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     padding: 20px;
@@ -588,107 +452,313 @@ class StreamlitUI:
                     opacity: 0.9;
                 }
                 
-                /* Card */
-                .card {
+                .login-container {
                     background: white;
-                    padding: 20px;
+                    padding: 40px;
+                    border-radius: 20px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                    max-width: 500px;
+                    margin: 0 auto;
+                }
+                
+                .login-container h2 {
+                    text-align: center;
+                    margin-bottom: 30px;
+                }
+                
+                .register-container {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 20px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                    max-width: 500px;
+                    margin: 0 auto;
+                }
+                
+                .tab-button {
+                    padding: 10px 20px;
+                    border: none;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    transition: all 0.3s;
+                }
+                
+                .tab-button.active {
+                    background: #667eea;
+                    color: white;
+                }
+                
+                .tab-button.inactive {
+                    background: #e5e7eb;
+                    color: #6b7280;
+                }
+                
+                .tab-button:hover {
+                    transform: translateY(-2px);
+                }
+                
+                .demo-box {
+                    text-align: center;
+                    margin-top: 20px;
+                    padding: 15px;
+                    background: #f3f4f6;
+                    border-radius: 10px;
+                }
+                
+                .search-box {
+                    background: white;
+                    padding: 30px;
                     border-radius: 15px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
                     margin-bottom: 20px;
                 }
                 
-                /* Badge */
-                .badge {
-                    background: #667eea;
-                    color: white;
-                    padding: 5px 15px;
-                    border-radius: 20px;
-                    font-size: 0.8rem;
-                    display: inline-block;
-                    margin: 5px;
-                }
-                
-                .badge-success {
-                    background: #10b981;
-                }
-                
-                .badge-warning {
-                    background: #f59e0b;
-                }
-                
-                .badge-danger {
-                    background: #ef4444;
-                }
-                
-                /* Complexity Info */
-                .complexity-box {
-                    background: #f3f4f6;
-                    padding: 15px;
-                    border-radius: 10px;
+                .result-box {
+                    background: #f8fafc;
+                    padding: 20px;
+                    border-radius: 15px;
                     border-left: 4px solid #667eea;
                     margin: 15px 0;
                 }
                 
-                .complexity-box code {
-                    background: #e5e7eb;
-                    padding: 2px 8px;
-                    border-radius: 5px;
+                .badge {
+                    display: inline-block;
+                    padding: 5px 15px;
+                    border-radius: 20px;
+                    font-size: 0.85rem;
+                    margin: 3px;
+                }
+                
+                .badge-blue {
+                    background: #667eea;
+                    color: white;
+                }
+                
+                .badge-green {
+                    background: #10b981;
+                    color: white;
+                }
+                
+                .badge-orange {
+                    background: #f59e0b;
+                    color: white;
+                }
+                
+                .badge-red {
+                    background: #ef4444;
+                    color: white;
+                }
+                
+                .complexity-info {
+                    background: #f1f5f9;
+                    padding: 15px;
+                    border-radius: 10px;
+                    border-left: 4px solid #3b82f6;
+                    margin: 10px 0;
+                }
+                
+                .user-info {
+                    background: #f1f5f9;
+                    padding: 10px 20px;
+                    border-radius: 10px;
+                    display: inline-block;
+                    margin: 5px 0;
                 }
             </style>
         """, unsafe_allow_html=True)
     
-    def _render_login(self):
-        """Halaman Login"""
-        col1, col2, col3 = st.columns([1, 2, 1])
+    def _render_login_register(self):
+        """Halaman Login dan Registrasi"""
+        
+        st.markdown("""
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2>🔐 Selamat Datang</h2>
+                <p style="color: #6b7280;">Silakan login atau daftar untuk melanjutkan</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Tabs dengan CSS manual untuk tampilan lebih baik
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if not st.session_state.get('show_register', False):
+                st.markdown("""
+                    <div style="text-align: center; padding: 10px; background: #667eea; border-radius: 10px; color: white;">
+                        <strong>🔐 LOGIN</strong>
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                if st.button("🔐 Login", use_container_width=True):
+                    st.session_state.show_register = False
+                    st.rerun()
         
         with col2:
-            st.markdown("""
-                <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-                    <h2 style="text-align: center; margin-bottom: 30px;">🔐 Login</h2>
-            """, unsafe_allow_html=True)
+            if st.session_state.get('show_register', False):
+                st.markdown("""
+                    <div style="text-align: center; padding: 10px; background: #667eea; border-radius: 10px; color: white;">
+                        <strong>📝 REGISTER</strong>
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                if st.button("📝 Register", use_container_width=True):
+                    st.session_state.show_register = True
+                    st.rerun()
+        
+        st.markdown("---")
+        
+        # Tampilkan form berdasarkan pilihan
+        if st.session_state.get('show_register', False):
+            self._render_register_form()
+        else:
+            self._render_login_form()
+    
+    def _render_login_form(self):
+        """Form Login"""
+        st.markdown('<div class="login-container">', unsafe_allow_html=True)
+        st.markdown("<h2>🔐 Login</h2>", unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            username = st.text_input(
+                "Username",
+                placeholder="Masukkan username Anda",
+                help="Gunakan username yang sudah terdaftar"
+            )
             
-            with st.form("login_form"):
-                username = st.text_input("Username", placeholder="Masukkan username")
-                password = st.text_input("Password", type="password", placeholder="Masukkan password")
-                
-                submitted = st.form_submit_button("Login", use_container_width=True)
-                
-                if submitted:
+            password = st.text_input(
+                "Password",
+                type="password",
+                placeholder="Masukkan password Anda"
+            )
+            
+            submitted = st.form_submit_button("Login", use_container_width=True, type="primary")
+            
+            if submitted:
+                if not username or not password:
+                    st.error("❌ Username dan password harus diisi!")
+                else:
                     success, msg = self.auth.login(username, password)
                     if success:
                         st.session_state.logged_in = True
                         st.session_state.username = username
+                        st.success(msg)
                         st.rerun()
                     else:
                         st.error(msg)
+        
+        # Info demo
+        st.markdown("""
+            <div class="demo-box">
+                <p style="margin: 0; font-size: 0.9rem;">
+                    📝 <strong>Demo Akun:</strong><br>
+                    Username: <code>admin</code><br>
+                    Password: <code>admin123</code>
+                </p>
+                <p style="margin: 10px 0 0 0; font-size: 0.85rem; color: #6b7280;">
+                    💡 Belum punya akun? Klik <strong>Register</strong> di atas
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    def _render_register_form(self):
+        """Form Registrasi"""
+        st.markdown('<div class="register-container">', unsafe_allow_html=True)
+        st.markdown("<h2>📝 Daftar Akun Baru</h2>", unsafe_allow_html=True)
+        
+        with st.form("register_form"):
+            col1, col2 = st.columns(2)
             
+            with col1:
+                username = st.text_input(
+                    "Username *",
+                    placeholder="Contoh: johndoe",
+                    help="3-20 karakter (huruf, angka, underscore)"
+                )
+                
+                password = st.text_input(
+                    "Password *",
+                    type="password",
+                    placeholder="Minimal 4 karakter",
+                    help="Minimal 4 karakter"
+                )
+            
+            with col2:
+                nama_lengkap = st.text_input(
+                    "Nama Lengkap",
+                    placeholder="Contoh: John Doe",
+                    help="Opsional, hanya huruf dan spasi"
+                )
+                
+                confirm_password = st.text_input(
+                    "Konfirmasi Password *",
+                    type="password",
+                    placeholder="Ulangi password Anda"
+                )
+            
+            # Informasi validasi
             st.markdown("""
-                <div style="text-align: center; margin-top: 20px; padding: 15px; background: #f3f4f6; border-radius: 10px;">
-                    <p style="margin: 0;">📝 Demo: <code>admin</code> / <code>admin123</code></p>
+                <div style="background: #f1f5f9; padding: 10px; border-radius: 10px; margin: 10px 0; font-size: 0.85rem;">
+                    <p style="margin: 0; color: #64748b;">
+                        <strong>📋 Aturan:</strong><br>
+                        • Username: 3-20 karakter (huruf, angka, underscore)<br>
+                        • Password: Minimal 4 karakter<br>
+                        • Nama: Hanya huruf dan spasi (opsional)
+                    </p>
                 </div>
             """, unsafe_allow_html=True)
             
-            st.markdown("</div>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("📝 Daftar Sekarang", use_container_width=True, type="primary")
+            
+            if submitted:
+                if not username or not password or not confirm_password:
+                    st.error("❌ Field yang bertanda * harus diisi!")
+                else:
+                    success, msg = self.auth.register(
+                        username, password, confirm_password, nama_lengkap
+                    )
+                    if success:
+                        st.success(msg)
+                        # Setelah registrasi berhasil, balik ke login
+                        st.session_state.show_register = False
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error(msg)
+        
+        # Tombol kembali ke login
+        if st.button("← Kembali ke Login", use_container_width=True):
+            st.session_state.show_register = False
+            st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     def _render_sidebar(self):
-        """Sidebar navigasi"""
         with st.sidebar:
+            # User info
+            user_info = self.auth.get_user_info(st.session_state.username)
+            nama_display = user_info['nama_lengkap'] if user_info else st.session_state.username
+            
             st.markdown(f"""
-                <div style="text-align: center; padding: 10px;">
-                    <h3>👤 {st.session_state.username}</h3>
+                <div style="text-align: center; padding: 15px;">
+                    <div style="font-size: 3rem;">👤</div>
+                    <h3>{nama_display}</h3>
+                    <div class="user-info">
+                        <small>@{st.session_state.username}</small>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
             
             st.markdown("---")
             
-            # Menu utama dengan ikon
             menu = st.radio(
                 "📋 Menu",
                 [
                     "🏠 Dashboard",
                     "➕ Tambah Data",
                     "📋 Data Mahasiswa",
-                    "🔍 Pencarian",
+                    "🔍 Cari Mahasiswa",
                     "📊 Statistik"
                 ],
                 index=0
@@ -698,12 +768,12 @@ class StreamlitUI:
             
             if st.button("🚪 Logout", use_container_width=True):
                 st.session_state.logged_in = False
+                st.session_state.username = ""
                 st.rerun()
             
             return menu
     
     def _render_dashboard(self):
-        """Dashboard"""
         st.markdown("""
             <div class="main-header">
                 <h1>📊 Dashboard</h1>
@@ -713,7 +783,6 @@ class StreamlitUI:
         
         data = self.mahasiswa.get_all()
         
-        # Statistik Cards
         col1, col2, col3, col4 = st.columns(4)
         
         total = len(data)
@@ -724,13 +793,12 @@ class StreamlitUI:
         with col1:
             st.metric("📊 Total Mahasiswa", total)
         with col2:
-            st.metric("✅ Aktif", aktif)
+            st.metric("✅ Mahasiswa Aktif", aktif)
         with col3:
             st.metric("⭐ Rata-rata IPK", f"{avg_ipk:.2f}")
         with col4:
             st.metric("🏆 IPK Tertinggi", f"{max_ipk:.2f}")
         
-        # Tombol Generate
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📄 Generate Contoh Data", use_container_width=True):
@@ -741,7 +809,6 @@ class StreamlitUI:
                 else:
                     st.error(msg)
         
-        # Tabel data terbaru
         st.markdown("---")
         st.subheader("📋 Data Terbaru")
         
@@ -752,7 +819,6 @@ class StreamlitUI:
             st.info("Belum ada data. Klik 'Generate Contoh Data' untuk menambahkan.")
     
     def _render_tambah(self):
-        """Halaman Tambah Data"""
         st.markdown("""
             <div class="main-header">
                 <h1>➕ Tambah Mahasiswa</h1>
@@ -772,15 +838,6 @@ class StreamlitUI:
                 ipk = st.number_input("IPK (0.00 - 4.00)", min_value=0.0, max_value=4.0, step=0.01, format="%.2f")
                 status = st.selectbox("Status", Config.STATUS_LIST)
             
-            st.markdown("""
-                <div class="complexity-box">
-                    <b>⚡ Kompleksitas:</b><br>
-                    • Validasi: O(1)<br>
-                    • Insert Data: O(1)<br>
-                    • Update Cache: O(1)
-                </div>
-            """, unsafe_allow_html=True)
-            
             submitted = st.form_submit_button("💾 Simpan Data", use_container_width=True)
             
             if submitted:
@@ -795,7 +852,6 @@ class StreamlitUI:
                         st.error(msg)
     
     def _render_data(self):
-        """Halaman Data Mahasiswa"""
         st.markdown("""
             <div class="main-header">
                 <h1>📋 Data Mahasiswa</h1>
@@ -809,17 +865,13 @@ class StreamlitUI:
             st.info("Belum ada data. Generate contoh data terlebih dahulu.")
             return
         
-        # Filter dan Search
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         
         with col1:
             search = st.text_input("🔍 Cari", placeholder="Ketik NIM atau Nama...")
         with col2:
             filter_status = st.selectbox("Filter Status", ["Semua"] + Config.STATUS_LIST)
-        with col3:
-            sort_by = st.selectbox("Urutkan", ["NIM", "Nama", "IPK", "Status"])
         
-        # Filter data
         filtered = data.copy()
         
         if search:
@@ -833,17 +885,10 @@ class StreamlitUI:
         if filter_status != "Semua":
             filtered = [item for item in filtered if item['status'] == filter_status]
         
-        # Sorting
-        key_map = {"NIM": "nim", "Nama": "nama", "IPK": "ipk", "Status": "status"}
-        if sort_by in key_map:
-            filtered = sorted(filtered, key=lambda x: x[key_map[sort_by]])
-        
-        # Tampilkan data
         if filtered:
             df = pd.DataFrame(filtered)
             st.dataframe(df, use_container_width=True)
             
-            # Hapus Data
             st.markdown("---")
             st.subheader("🗑️ Hapus Data")
             
@@ -862,14 +907,14 @@ class StreamlitUI:
                     else:
                         st.error(msg)
         else:
-            st.warning("Tidak ada data yang cocok dengan filter.")
+            st.warning("Tidak ada data yang cocok.")
     
     def _render_search(self):
-        """Halaman Pencarian dengan Algoritma"""
+        """Halaman Pencarian - SUPER SIMPLE"""
         st.markdown("""
             <div class="main-header">
-                <h1>🔍 Pencarian Mahasiswa</h1>
-                <p>Gunakan berbagai algoritma pencarian</p>
+                <h1>🔍 Cari Mahasiswa</h1>
+                <p>Cukup ketik apapun yang ingin dicari</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -879,81 +924,150 @@ class StreamlitUI:
             st.info("Belum ada data. Generate contoh data terlebih dahulu.")
             return
         
-        st.markdown("""
-            <div class="card">
-                <h4>📖 Pilih Algoritma Pencarian</h4>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="search-box">', unsafe_allow_html=True)
         
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns([3, 1])
         
         with col1:
-            algorithm = st.selectbox(
-                "Algoritma",
-                [
-                    "Linear Search - O(n)",
-                    "Binary Search - O(log n)",
-                    "Sequential Search - O(n)"
-                ]
+            keyword = st.text_input(
+                "🔎 Masukkan kata kunci",
+                placeholder="Contoh: 2010114001, Fajar, Informatika, Aktif...",
+                help="Cari berdasarkan NIM, Nama, Prodi, atau Status"
             )
         
         with col2:
-            search_type = st.selectbox("Cari Berdasarkan", ["NIM", "Nama"])
-            keyword = st.text_input("Kata Kunci", placeholder="Masukkan kata kunci...")
+            method = st.selectbox(
+                "⚡ Metode",
+                [
+                    "Otomatis (Rekomendasi)",
+                    "Cepat - Binary Search",
+                    "Fleksibel - Sequential Search",
+                    "Sederhana - Linear Search"
+                ],
+                help="Pilih metode pencarian"
+            )
         
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Complexity Info
-        st.markdown("""
-            <div class="complexity-box">
-                <b>📊 Perbandingan Kompleksitas:</b><br>
-                • <b>Linear Search</b>: O(n) - Mencari satu per satu dari awal<br>
-                • <b>Binary Search</b>: O(log n) - Membagi data menjadi 2 bagian (data harus terurut)<br>
-                • <b>Sequential Search</b>: O(n) - Mencari di semua field
-            </div>
-        """, unsafe_allow_html=True)
-        
-        if st.button("🔍 Cari", use_container_width=True):
-            if not keyword:
-                st.warning("⚠️ Masukkan kata kunci terlebih dahulu!")
-                return
-            
-            key = "nim" if search_type == "NIM" else "nama"
-            results = []
-            
-            # Jalankan algoritma yang dipilih
-            if "Linear" in algorithm:
-                with st.spinner("Mencari dengan Linear Search..."):
-                    result = SearchAlgorithms.linear_search(data, key, keyword)
-                    if result:
-                        results = [result]
-                    st.info(f"✅ Linear Search selesai - O(n)")
-            
-            elif "Binary" in algorithm:
-                with st.spinner("Mencari dengan Binary Search..."):
-                    result = SearchAlgorithms.binary_search(data, key, keyword)
-                    if result:
-                        results = [result]
-                    st.info(f"✅ Binary Search selesai - O(log n)")
-            
-            else:  # Sequential
-                with st.spinner("Mencari dengan Sequential Search..."):
-                    results = SearchAlgorithms.sequential_search(data, keyword)
-                    st.info(f"✅ Sequential Search selesai - O(n)")
-            
-            # Tampilkan hasil
-            if results:
-                st.success(f"✅ Ditemukan {len(results)} data!")
-                df = pd.DataFrame(results)
-                st.dataframe(df, use_container_width=True)
+        if st.button("🔍 Cari Sekarang", use_container_width=True, type="primary"):
+            if not keyword or not keyword.strip():
+                st.warning("⚠️ Silakan masukkan kata kunci terlebih dahulu!")
             else:
-                st.warning("❌ Data tidak ditemukan!")
+                method_map = {
+                    "Otomatis (Rekomendasi)": "auto",
+                    "Cepat - Binary Search": "binary",
+                    "Fleksibel - Sequential Search": "sequential",
+                    "Sederhana - Linear Search": "linear"
+                }
+                
+                with st.spinner("Sedang mencari..."):
+                    selected_method = method_map[method]
+                    results, method_used, complexity = self.mahasiswa.search(
+                        keyword, selected_method
+                    )
+                
+                st.markdown("---")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("📊 Ditemukan", f"{len(results)} data")
+                
+                with col2:
+                    st.markdown(f"""
+                        <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; text-align: center;">
+                            <small style="color: #64748b;">Metode</small><br>
+                            <strong>{method_used}</strong>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                        <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; text-align: center;">
+                            <small style="color: #64748b;">Kompleksitas</small><br>
+                            <strong>{complexity}</strong>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                if results:
+                    st.success(f"✅ Menampilkan {len(results)} hasil pencarian untuk '{keyword}'")
+                    df = pd.DataFrame(results)
+                    st.dataframe(df, use_container_width=True)
+                else:
+                    st.warning(f"❌ Tidak ditemukan data untuk '{keyword}'")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        with st.expander("📖 Penjelasan Metode Pencarian", expanded=False):
+            st.markdown("""
+                <div class="complexity-info">
+                    <h4>🔍 3 Metode Pencarian</h4>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px;">
+                        
+                        <div style="background: white; padding: 15px; border-radius: 10px; border-left: 4px solid #667eea;">
+                            <h5>🤖 Otomatis <span class="badge badge-green">Rekomendasi</span></h5>
+                            <p style="margin: 5px 0; font-size: 0.9rem;">
+                                Sistem pilih metode terbaik:
+                            </p>
+                            <ul style="font-size: 0.85rem;">
+                                <li><strong>NIM</strong> → Binary Search</li>
+                                <li><strong>Nama/Prodi</strong> → Sequential Search</li>
+                            </ul>
+                            <small style="color: #64748b;">⚡ Paling mudah</small>
+                        </div>
+                        
+                        <div style="background: white; padding: 15px; border-radius: 10px; border-left: 4px solid #10b981;">
+                            <h5>🚀 Cepat <span class="badge badge-blue">Binary</span></h5>
+                            <p style="margin: 5px 0; font-size: 0.9rem;">
+                                Mencari dengan membagi data.
+                            </p>
+                            <ul style="font-size: 0.85rem;">
+                                <li><strong>Kecepatan:</strong> Sangat Cepat</li>
+                                <li><strong>Kompleksitas:</strong> O(log n)</li>
+                                <li><strong>Cocok:</strong> Data > 100</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background: white; padding: 15px; border-radius: 10px; border-left: 4px solid #f59e0b;">
+                            <h5>🔍 Fleksibel <span class="badge badge-orange">Sequential</span></h5>
+                            <p style="margin: 5px 0; font-size: 0.9rem;">
+                                Mencari di semua field.
+                            </p>
+                            <ul style="font-size: 0.85rem;">
+                                <li><strong>Kecepatan:</strong> Cukup Cepat</li>
+                                <li><strong>Kompleksitas:</strong> O(n)</li>
+                                <li><strong>Cocok:</strong> Pencarian fleksibel</li>
+                            </ul>
+                        </div>
+                        
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with st.expander("💡 Contoh Pencarian", expanded=False):
+            st.markdown("""
+                <div style="background: #f1f5f9; padding: 15px; border-radius: 10px;">
+                    <h4>📝 Coba cari dengan kata kunci berikut:</h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                        <span class="badge badge-blue">2010114001</span>
+                        <span class="badge badge-blue">Fajar</span>
+                        <span class="badge badge-blue">Informatika</span>
+                        <span class="badge badge-blue">Aktif</span>
+                        <span class="badge badge-blue">Siti</span>
+                        <span class="badge badge-blue">Manajemen</span>
+                        <span class="badge badge-blue">3.85</span>
+                        <span class="badge badge-blue">Cuti</span>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 0.9rem; color: #64748b;">
+                        💡 Tips: Bisa cari dengan NIM, Nama, Prodi, atau Status.
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
     
     def _render_statistik(self):
-        """Halaman Statistik dengan Sorting"""
         st.markdown("""
             <div class="main-header">
-                <h1>📊 Statistik & Sorting</h1>
-                <p>Analisis data dan demo sorting</p>
+                <h1>📊 Statistik</h1>
+                <p>Analisis data mahasiswa</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -963,7 +1077,6 @@ class StreamlitUI:
             st.info("Belum ada data. Generate contoh data terlebih dahulu.")
             return
         
-        # Statistik
         col1, col2, col3 = st.columns(3)
         
         total = len(data)
@@ -971,13 +1084,12 @@ class StreamlitUI:
         avg_ipk = sum(d['ipk'] for d in data) / total
         
         with col1:
-            st.metric("Total", total)
+            st.metric("📊 Total", total)
         with col2:
-            st.metric("Aktif", aktif)
+            st.metric("✅ Aktif", aktif)
         with col3:
-            st.metric("Rata-rata IPK", f"{avg_ipk:.2f}")
+            st.metric("⭐ Rata-rata IPK", f"{avg_ipk:.2f}")
         
-        # Grafik Status
         st.subheader("📊 Distribusi Status")
         status_counts = {}
         for item in data:
@@ -987,71 +1099,8 @@ class StreamlitUI:
         fig = px.pie(df_status, values='Jumlah', names='Status', hole=0.3)
         fig.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig, use_container_width=True)
-        
-        # Sorting Demo
-        st.markdown("---")
-        st.subheader("🔀 Demo Sorting")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            sort_algorithm = st.selectbox(
-                "Algoritma",
-                [
-                    "Bubble Sort - O(n²)",
-                    "Insertion Sort - O(n²)",
-                    "Merge Sort - O(n log n)",
-                    "Shell Sort - O(n log n)"
-                ]
-            )
-        
-        with col2:
-            sort_key = st.selectbox("Sort Berdasarkan", ["NIM", "Nama", "IPK", "Status"])
-        
-        with col3:
-            sort_reverse = st.checkbox("Descending")
-        
-        # Complexity Info
-        st.markdown("""
-            <div class="complexity-box">
-                <b>📊 Perbandingan Kompleksitas Sorting:</b><br>
-                • <b>Bubble Sort</b>: O(n²) - Membandingkan elemen bersebelahan<br>
-                • <b>Insertion Sort</b>: O(n²) - Membangun array terurut satu per satu<br>
-                • <b>Merge Sort</b>: O(n log n) - Membagi dan menggabungkan<br>
-                • <b>Shell Sort</b>: O(n log n) - Perbaikan insertion sort dengan gap
-            </div>
-        """, unsafe_allow_html=True)
-        
-        if st.button("🔄 Jalankan Sorting", use_container_width=True):
-            with st.spinner(f"Menjalankan {sort_algorithm}..."):
-                key_map = {"NIM": "nim", "Nama": "nama", "IPK": "ipk", "Status": "status"}
-                algo_map = {
-                    "Bubble Sort - O(n²)": "bubble",
-                    "Insertion Sort - O(n²)": "insertion",
-                    "Merge Sort - O(n log n)": "merge",
-                    "Shell Sort - O(n log n)": "shell"
-                }
-                
-                algo_name = algo_map[sort_algorithm]
-                key = key_map[sort_key]
-                
-                # Panggil algoritma sorting
-                if algo_name == "bubble":
-                    sorted_data = SortingAlgorithms.bubble_sort(data, key, sort_reverse)
-                elif algo_name == "insertion":
-                    sorted_data = SortingAlgorithms.insertion_sort(data, key, sort_reverse)
-                elif algo_name == "merge":
-                    sorted_data = SortingAlgorithms.merge_sort(data, key, sort_reverse)
-                else:  # shell
-                    sorted_data = SortingAlgorithms.shell_sort(data, key, sort_reverse)
-                
-                st.success(f"✅ Sorting selesai dengan {sort_algorithm}")
-                df = pd.DataFrame(sorted_data)
-                st.dataframe(df, use_container_width=True)
     
     def run(self):
-        """Main run"""
-        # Header
         st.markdown("""
             <div class="main-header">
                 <h1>🎓 SIMM - Sistem Informasi Mahasiswa</h1>
@@ -1059,22 +1108,21 @@ class StreamlitUI:
             </div>
         """, unsafe_allow_html=True)
         
-        # Cek login
+        # Jika belum login, tampilkan halaman login/register
         if not st.session_state.logged_in:
-            self._render_login()
+            self._render_login_register()
             return
         
-        # Render sidebar dan dapatkan menu
+        # Jika sudah login, tampilkan menu utama
         menu = self._render_sidebar()
         
-        # Render menu
         if menu == "🏠 Dashboard":
             self._render_dashboard()
         elif menu == "➕ Tambah Data":
             self._render_tambah()
         elif menu == "📋 Data Mahasiswa":
             self._render_data()
-        elif menu == "🔍 Pencarian":
+        elif menu == "🔍 Cari Mahasiswa":
             self._render_search()
         elif menu == "📊 Statistik":
             self._render_statistik()
