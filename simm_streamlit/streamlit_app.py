@@ -2,15 +2,7 @@
 SIMM - Sistem Informasi Manajemen Mahasiswa
 Universitas Pamulang
 
-Aplikasi ini mengimplementasikan:
-- CRUD Operations
-- OOP (Encapsulation, Inheritance, Polymorphism)
-- Searching Algorithms (Linear, Binary, Sequential)
-- Sorting Algorithms (Bubble, Insertion, Selection, Merge, Shell)
-- File I/O dengan SQLite
-- Validasi dengan Regex
-- Exception Handling
-- Dokumentasi Time Complexity
+Aplikasi dengan tampilan clean dan terstruktur untuk admin
 """
 
 import streamlit as st
@@ -18,30 +10,25 @@ import sqlite3
 import pandas as pd
 import plotly.express as px
 import re
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime
 from abc import ABC, abstractmethod
 
 # ============================================================================
-# KONFIGURASI DAN KONSTANTA
+# KONFIGURASI APLIKASI
 # ============================================================================
 
-class AppConfig:
+class Config:
     """Konfigurasi aplikasi"""
     DB_NAME = 'database.db'
     PAGE_TITLE = "SIMM - Sistem Informasi Mahasiswa"
     PAGE_ICON = "🎓"
-    LAYOUT = "wide"
-    THEME = "dark"
     
-    # Regex patterns untuk validasi
+    # Regex Patterns
     NIM_PATTERN = r'^[0-9]{10,12}$'
     NAMA_PATTERN = r'^[A-Za-z\s]{2,50}$'
     IPK_PATTERN = r'^[0-4](\.\d{1,2})?$'
-    USERNAME_PATTERN = r'^[A-Za-z0-9_]{3,20}$'
-    PASSWORD_PATTERN = r'^.{3,}$'
     
-    # Daftar program studi
     PRODI_LIST = [
         "Teknik Informatika", "Sistem Informasi", "Manajemen Informatika",
         "Teknik Komputer", "Akuntansi", "Manajemen", "Hukum", "Psikologi"
@@ -54,114 +41,53 @@ class AppConfig:
 # ============================================================================
 
 class ValidationError(Exception):
-    """Exception untuk error validasi"""
     pass
 
 class DatabaseError(Exception):
-    """Exception untuk error database"""
-    pass
-
-class NotFoundError(Exception):
-    """Exception untuk data tidak ditemukan"""
     pass
 
 # ============================================================================
-# CLASS MAHASISWA (OOP - Encapsulation)
+# CLASS MAHASISWA (OOP)
 # ============================================================================
 
 class Mahasiswa:
-    """
-    Class Mahasiswa dengan implementasi Encapsulation
-    
-    Time Complexity: O(1) untuk semua operasi dasar
-    Space Complexity: O(1)
-    """
+    """Class Mahasiswa dengan Encapsulation"""
     
     def __init__(self, nim: str, nama: str, prodi: str, ipk: float, status: str = "Aktif"):
-        """
-        Constructor Mahasiswa
-        Time Complexity: O(1)
-        Space Complexity: O(1)
-        """
-        self.__nim = nim          # Private attribute (Encapsulation)
+        self.__nim = nim
         self.__nama = nama
         self.__prodi = prodi
         self.__ipk = ipk
         self.__status = status
-        self.__created_at = datetime.now()
     
-    # ========== GETTER METHODS ==========
+    # GETTERS
     def get_nim(self) -> str:
-        """Getter untuk NIM - Time Complexity: O(1)"""
         return self.__nim
     
     def get_nama(self) -> str:
-        """Getter untuk Nama - Time Complexity: O(1)"""
         return self.__nama
     
     def get_prodi(self) -> str:
-        """Getter untuk Program Studi - Time Complexity: O(1)"""
         return self.__prodi
     
     def get_ipk(self) -> float:
-        """Getter untuk IPK - Time Complexity: O(1)"""
         return self.__ipk
     
     def get_status(self) -> str:
-        """Getter untuk Status - Time Complexity: O(1)"""
         return self.__status
     
-    def get_created_at(self) -> datetime:
-        """Getter untuk Created At - Time Complexity: O(1)"""
-        return self.__created_at
-    
-    # ========== SETTER METHODS ==========
+    # SETTERS dengan Validasi
     def set_nama(self, nama: str) -> None:
-        """Setter untuk Nama dengan validasi - Time Complexity: O(1)"""
-        if not self._validate_nama(nama):
-            raise ValidationError("Format nama tidak valid!")
+        if not re.match(Config.NAMA_PATTERN, nama):
+            raise ValidationError("Nama hanya boleh huruf dan spasi (2-50 karakter)!")
         self.__nama = nama
     
-    def set_prodi(self, prodi: str) -> None:
-        """Setter untuk Program Studi - Time Complexity: O(1)"""
-        if prodi not in AppConfig.PRODI_LIST:
-            raise ValidationError("Program studi tidak valid!")
-        self.__prodi = prodi
-    
     def set_ipk(self, ipk: float) -> None:
-        """Setter untuk IPK dengan validasi - Time Complexity: O(1)"""
         if not 0.0 <= ipk <= 4.0:
             raise ValidationError("IPK harus antara 0.00 - 4.00!")
         self.__ipk = ipk
     
-    def set_status(self, status: str) -> None:
-        """Setter untuk Status - Time Complexity: O(1)"""
-        if status not in AppConfig.STATUS_LIST:
-            raise ValidationError("Status tidak valid!")
-        self.__status = status
-    
-    # ========== VALIDATION METHODS ==========
-    @staticmethod
-    def _validate_nama(nama: str) -> bool:
-        """Validasi nama dengan Regex - Time Complexity: O(n)"""
-        return bool(re.match(AppConfig.NAMA_PATTERN, nama))
-    
-    @staticmethod
-    def validate_nim(nim: str) -> bool:
-        """Validasi NIM dengan Regex - Time Complexity: O(n)"""
-        return bool(re.match(AppConfig.NIM_PATTERN, nim))
-    
-    @staticmethod
-    def validate_ipk(ipk: float) -> bool:
-        """Validasi IPK dengan Regex - Time Complexity: O(1)"""
-        return bool(re.match(AppConfig.IPK_PATTERN, str(ipk)))
-    
-    # ========== TO DICT METHOD ==========
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Konversi objek ke dictionary
-        Time Complexity: O(1)
-        """
+    def to_dict(self) -> Dict:
         return {
             'nim': self.__nim,
             'nama': self.__nama,
@@ -170,121 +96,42 @@ class Mahasiswa:
             'status': self.__status
         }
     
-    # ========== STRING REPRESENTATION ==========
-    def __str__(self) -> str:
-        """String representation - Time Complexity: O(1)"""
-        return f"{self.__nama} ({self.__nim}) - {self.__prodi} - IPK: {self.__ipk}"
+    @staticmethod
+    def validate_nim(nim: str) -> bool:
+        return bool(re.match(Config.NIM_PATTERN, nim))
 
 # ============================================================================
-# CLASS MAHASISWA AKTIF (OOP - Inheritance & Polymorphism)
+# CLASS MAHASISWA AKTIF (Inheritance)
 # ============================================================================
 
 class MahasiswaAktif(Mahasiswa):
-    """
-    Class turunan dari Mahasiswa untuk status Aktif
-    Implementasi Inheritance dan Polymorphism
-    """
-    
     def __init__(self, nim: str, nama: str, prodi: str, ipk: float):
-        """
-        Constructor MahasiswaAktif
-        Time Complexity: O(1)
-        """
         super().__init__(nim, nama, prodi, ipk, "Aktif")
-        self.__semester = 1  # Additional attribute
+        self.__semester = 1
     
     def get_semester(self) -> int:
-        """Getter untuk Semester"""
         return self.__semester
     
     def set_semester(self, semester: int) -> None:
-        """Setter untuk Semester"""
         if semester < 1:
             raise ValidationError("Semester minimal 1!")
         self.__semester = semester
-    
-    # Polymorphism - Override method
-    def to_dict(self) -> Dict[str, Any]:
-        """Override method to_dict"""
-        data = super().to_dict()
-        data['semester'] = self.__semester
-        return data
-    
-    def __str__(self) -> str:
-        """Override string representation"""
-        return f"{super().__str__()} - Semester {self.__semester}"
 
 # ============================================================================
-# CLASS MAHASISWA CUTI (OOP - Inheritance)
-# ============================================================================
-
-class MahasiswaCuti(Mahasiswa):
-    """
-    Class turunan dari Mahasiswa untuk status Cuti
-    Implementasi Inheritance
-    """
-    
-    def __init__(self, nim: str, nama: str, prodi: str, ipk: float):
-        super().__init__(nim, nama, prodi, ipk, "Cuti")
-        self.__alasan_cuti = ""  # Additional attribute
-    
-    def get_alasan_cuti(self) -> str:
-        """Getter untuk Alasan Cuti"""
-        return self.__alasan_cuti
-    
-    def set_alasan_cuti(self, alasan: str) -> None:
-        """Setter untuk Alasan Cuti"""
-        self.__alasan_cuti = alasan
-    
-    def __str__(self) -> str:
-        """Override string representation"""
-        base = super().__str__()
-        return f"{base} - Alasan: {self.__alasan_cuti if self.__alasan_cuti else 'Tidak ada alasan'}"
-
-# ============================================================================
-# CLASS DATABASE MANAGER (OOP - Encapsulation)
+# CLASS DATABASE MANAGER
 # ============================================================================
 
 class DatabaseManager:
-    """
-    Manajemen database dengan SQLite
-    Implementasi Encapsulation untuk operasi database
+    """Manajemen database"""
     
-    Time Complexity: O(1) untuk koneksi, O(n) untuk operasi data
-    """
-    
-    def __init__(self, db_name: str = AppConfig.DB_NAME):
-        """
-        Constructor DatabaseManager
-        Time Complexity: O(1)
-        """
-        self.__db_name = db_name
-        self.__connection = None
+    def __init__(self):
+        self.__db_name = Config.DB_NAME
         self._init_database()
     
-    def _get_connection(self) -> sqlite3.Connection:
-        """
-        Mendapatkan koneksi database
-        Time Complexity: O(1)
-        """
-        if self.__connection is None:
-            self.__connection = sqlite3.connect(self.__db_name)
-        return self.__connection
+    def _get_connection(self):
+        return sqlite3.connect(self.__db_name)
     
-    def _close_connection(self) -> None:
-        """
-        Menutup koneksi database
-        Time Complexity: O(1)
-        """
-        if self.__connection:
-            self.__connection.close()
-            self.__connection = None
-    
-    def _init_database(self) -> None:
-        """
-        Inisialisasi database dan tabel
-        Time Complexity: O(1)
-        """
+    def _init_database(self):
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -293,8 +140,7 @@ class DatabaseManager:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
-                    password TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    password TEXT NOT NULL
                 )
             ''')
             
@@ -305,78 +151,56 @@ class DatabaseManager:
                     nama TEXT NOT NULL,
                     prodi TEXT NOT NULL,
                     ipk REAL NOT NULL,
-                    status TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    status TEXT NOT NULL
                 )
             ''')
             
-            # Insert default user
+            # Default user
             cursor.execute(
                 "INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)",
-                ('fitra', '12345')
+                ('admin', 'admin123')
             )
             
             conn.commit()
-        except sqlite3.Error as e:
+            conn.close()
+        except Exception as e:
             raise DatabaseError(f"Gagal inisialisasi database: {str(e)}")
-        finally:
-            self._close_connection()
     
     def execute_query(self, query: str, params: tuple = ()) -> List[tuple]:
-        """
-        Eksekusi query SELECT
-        Time Complexity: O(n) dimana n = jumlah data
-        """
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
             cursor.execute(query, params)
-            return cursor.fetchall()
-        except sqlite3.Error as e:
-            raise DatabaseError(f"Gagal execute query: {str(e)}")
-        finally:
-            self._close_connection()
+            result = cursor.fetchall()
+            conn.close()
+            return result
+        except Exception as e:
+            raise DatabaseError(f"Error query: {str(e)}")
     
     def execute_update(self, query: str, params: tuple = ()) -> int:
-        """
-        Eksekusi query INSERT/UPDATE/DELETE
-        Time Complexity: O(1) untuk operasi dasar
-        """
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
             cursor.execute(query, params)
             conn.commit()
-            return cursor.rowcount
-        except sqlite3.Error as e:
-            raise DatabaseError(f"Gagal execute update: {str(e)}")
-        finally:
-            self._close_connection()
+            affected = cursor.rowcount
+            conn.close()
+            return affected
+        except Exception as e:
+            raise DatabaseError(f"Error update: {str(e)}")
 
 # ============================================================================
-# CLASS SEARCH ALGORITHMS (OOP - Polymorphism)
+# CLASS SEARCH ALGORITHMS
 # ============================================================================
 
 class SearchAlgorithms:
-    """
-    Implementasi berbagai algoritma pencarian
-    """
+    """Algoritma Pencarian"""
     
     @staticmethod
     def linear_search(data: List[Dict], key: str, value: Any) -> Optional[Dict]:
         """
-        Linear Search / Sequential Search
-        
-        Time Complexity: O(n)
-        Space Complexity: O(1)
-        
-        Args:
-            data: List of dictionaries
-            key: Key to search
-            value: Value to find
-            
-        Returns:
-            First matching item or None
+        Linear Search - O(n)
+        Mencari data satu per satu dari awal sampai ketemu
         """
         for item in data:
             if str(item.get(key, '')).lower() == str(value).lower():
@@ -386,10 +210,8 @@ class SearchAlgorithms:
     @staticmethod
     def linear_search_all(data: List[Dict], key: str, value: Any) -> List[Dict]:
         """
-        Linear Search - Find all matches
-        
-        Time Complexity: O(n)
-        Space Complexity: O(k) dimana k = jumlah hasil
+        Linear Search All - O(n)
+        Mencari semua data yang cocok
         """
         results = []
         for item in data:
@@ -400,23 +222,13 @@ class SearchAlgorithms:
     @staticmethod
     def binary_search(data: List[Dict], key: str, value: Any) -> Optional[Dict]:
         """
-        Binary Search (data harus sudah terurut berdasarkan key)
-        
-        Time Complexity: O(log n)
-        Space Complexity: O(1)
-        
-        Args:
-            data: List of dictionaries (sorted by key)
-            key: Key to search
-            value: Value to find
-            
-        Returns:
-            Matching item or None
+        Binary Search - O(log n)
+        Mencari data dengan membagi array menjadi 2 bagian (data harus terurut)
         """
         if not data:
             return None
         
-        # Sort data by key first
+        # Sort data by key
         sorted_data = sorted(data, key=lambda x: str(x.get(key, '')).lower())
         
         low, high = 0, len(sorted_data) - 1
@@ -436,58 +248,34 @@ class SearchAlgorithms:
         return None
     
     @staticmethod
-    def sequential_search(data: List[Dict], conditions: Dict[str, Any]) -> List[Dict]:
+    def sequential_search(data: List[Dict], keyword: str) -> List[Dict]:
         """
-        Sequential Search dengan multiple conditions
-        
-        Time Complexity: O(n)
-        Space Complexity: O(k) dimana k = jumlah hasil
-        
-        Args:
-            data: List of dictionaries
-            conditions: Dictionary of key-value pairs to match
-            
-        Returns:
-            List of matching items
+        Sequential Search - O(n)
+        Mencari data dengan keyword di semua field
         """
         results = []
+        keyword_lower = keyword.lower()
+        
         for item in data:
-            match = True
-            for key, value in conditions.items():
-                if key in item:
-                    item_value = str(item[key]).lower()
-                    search_value = str(value).lower()
-                    if search_value not in item_value:
-                        match = False
-                        break
-            if match:
-                results.append(item)
+            for value in item.values():
+                if keyword_lower in str(value).lower():
+                    results.append(item)
+                    break
+        
         return results
 
 # ============================================================================
-# CLASS SORTING ALGORITHMS (OOP)
+# CLASS SORTING ALGORITHMS
 # ============================================================================
 
 class SortingAlgorithms:
-    """
-    Implementasi berbagai algoritma pengurutan
-    """
+    """Algoritma Pengurutan"""
     
     @staticmethod
     def bubble_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
         """
-        Bubble Sort Algorithm
-        
-        Time Complexity: O(n²) - Worst Case, O(n) - Best Case
-        Space Complexity: O(1)
-        
-        Args:
-            data: List of dictionaries
-            key: Key to sort by
-            reverse: Sort descending if True
-            
-        Returns:
-            Sorted list
+        Bubble Sort - O(n²)
+        Membandingkan elemen bersebelahan dan menukar jika tidak sesuai
         """
         arr = data.copy()
         n = len(arr)
@@ -510,10 +298,8 @@ class SortingAlgorithms:
     @staticmethod
     def insertion_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
         """
-        Insertion Sort Algorithm
-        
-        Time Complexity: O(n²) - Worst Case, O(n) - Best Case
-        Space Complexity: O(1)
+        Insertion Sort - O(n²)
+        Membangun array terurut satu per satu
         """
         arr = data.copy()
         
@@ -536,37 +322,10 @@ class SortingAlgorithms:
         return arr
     
     @staticmethod
-    def selection_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
-        """
-        Selection Sort Algorithm
-        
-        Time Complexity: O(n²) - All Cases
-        Space Complexity: O(1)
-        """
-        arr = data.copy()
-        n = len(arr)
-        
-        for i in range(n):
-            min_idx = i
-            for j in range(i + 1, n):
-                val1 = str(arr[j].get(key, '')).lower()
-                val2 = str(arr[min_idx].get(key, '')).lower()
-                
-                if (val1 < val2 and not reverse) or (val1 > val2 and reverse):
-                    min_idx = j
-            
-            if min_idx != i:
-                arr[i], arr[min_idx] = arr[min_idx], arr[i]
-        
-        return arr
-    
-    @staticmethod
     def merge_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
         """
-        Merge Sort Algorithm
-        
-        Time Complexity: O(n log n) - All Cases
-        Space Complexity: O(n)
+        Merge Sort - O(n log n)
+        Membagi array menjadi 2 bagian, urutkan, lalu gabungkan
         """
         arr = data.copy()
         
@@ -581,7 +340,6 @@ class SortingAlgorithms:
     
     @staticmethod
     def _merge(left: List[Dict], right: List[Dict], key: str, reverse: bool) -> List[Dict]:
-        """Helper untuk merge sort"""
         result = []
         i = j = 0
         
@@ -603,10 +361,8 @@ class SortingAlgorithms:
     @staticmethod
     def shell_sort(data: List[Dict], key: str, reverse: bool = False) -> List[Dict]:
         """
-        Shell Sort Algorithm
-        
-        Time Complexity: O(n log n) - Average, O(n²) - Worst Case
-        Space Complexity: O(1)
+        Shell Sort - O(n log n)
+        Versi perbaikan dari insertion sort dengan gap
         """
         arr = data.copy()
         n = len(arr)
@@ -634,220 +390,124 @@ class SortingAlgorithms:
         return arr
 
 # ============================================================================
-# CLASS MAHASISWA MANAGER (Main Business Logic)
+# CLASS MAHASISWA MANAGER
 # ============================================================================
 
 class MahasiswaManager:
-    """
-    Manajemen data mahasiswa dengan implementasi OOP
-    Menggunakan Array (List) untuk menyimpan data
-    """
+    """Manager untuk operasi CRUD Mahasiswa"""
     
     def __init__(self):
-        """Constructor - Time Complexity: O(1)"""
         self.__db = DatabaseManager()
-        self.__mahasiswa_list: List[Dict] = []
+        self.__data: List[Dict] = []
         self._load_data()
     
-    def _load_data(self) -> None:
-        """
-        Load data dari database ke dalam array (List)
-        Time Complexity: O(n) dimana n = jumlah data
-        """
+    def _load_data(self):
+        """Load data dari database"""
         try:
-            data = self.__db.execute_query("SELECT * FROM mahasiswa")
-            self.__mahasiswa_list = [
-                {
-                    'nim': row[0],
-                    'nama': row[1],
-                    'prodi': row[2],
-                    'ipk': row[3],
-                    'status': row[4]
-                }
-                for row in data
+            result = self.__db.execute_query("SELECT * FROM mahasiswa")
+            self.__data = [
+                {'nim': row[0], 'nama': row[1], 'prodi': row[2], 
+                 'ipk': row[3], 'status': row[4]}
+                for row in result
             ]
-        except DatabaseError:
-            self.__mahasiswa_list = []
+        except:
+            self.__data = []
     
     def get_all(self) -> List[Dict]:
-        """
-        Mendapatkan semua data mahasiswa
-        
-        Time Complexity: O(1) - Returns reference
-        """
-        return self.__mahasiswa_list
+        """Mendapatkan semua data - O(1)"""
+        return self.__data
     
     def get_by_nim(self, nim: str) -> Optional[Dict]:
-        """
-        Mencari mahasiswa berdasarkan NIM menggunakan Linear Search
-        
-        Time Complexity: O(n)
-        """
-        return SearchAlgorithms.linear_search(self.__mahasiswa_list, 'nim', nim)
+        """Cari berdasarkan NIM - O(n)"""
+        return SearchAlgorithms.linear_search(self.__data, 'nim', nim)
     
-    def search(self, keyword: str, field: str = 'nama') -> List[Dict]:
-        """
-        Mencari mahasiswa dengan Sequential Search
-        
-        Time Complexity: O(n)
-        """
-        return SearchAlgorithms.sequential_search(
-            self.__mahasiswa_list,
-            {field: keyword}
-        )
-    
-    def sort(self, key: str = 'nama', algorithm: str = 'bubble', reverse: bool = False) -> List[Dict]:
-        """
-        Mengurutkan data mahasiswa dengan berbagai algoritma
-        
-        Time Complexity: Bervariasi tergantung algoritma
-        """
-        algorithms = {
-            'bubble': SortingAlgorithms.bubble_sort,
-            'insertion': SortingAlgorithms.insertion_sort,
-            'selection': SortingAlgorithms.selection_sort,
-            'merge': SortingAlgorithms.merge_sort,
-            'shell': SortingAlgorithms.shell_sort
-        }
-        
-        if algorithm not in algorithms:
-            raise ValidationError(f"Algoritma '{algorithm}' tidak dikenal!")
-        
-        return algorithms[algorithm](self.__mahasiswa_list, key, reverse)
-    
-    def tambah(self, nim: str, nama: str, prodi: str, ipk: float, status: str = "Aktif") -> Tuple[bool, str]:
-        """
-        Menambahkan data mahasiswa baru
-        
-        Time Complexity: O(1)
-        """
+    def tambah(self, nim: str, nama: str, prodi: str, ipk: float, status: str) -> Tuple[bool, str]:
+        """Tambah data - O(1)"""
         try:
-            # Validasi dengan Regex
+            # Validasi
             if not Mahasiswa.validate_nim(nim):
                 raise ValidationError("NIM harus 10-12 digit angka!")
             
-            if not Mahasiswa._validate_nama(nama):
-                raise ValidationError("Nama hanya boleh huruf dan spasi (2-50 karakter)!")
+            if not re.match(Config.NAMA_PATTERN, nama):
+                raise ValidationError("Nama hanya boleh huruf dan spasi!")
             
-            if not Mahasiswa.validate_ipk(ipk):
-                raise ValidationError("IPK harus antara 0.00 - 4.00!")
+            if not 0.0 <= ipk <= 4.0:
+                raise ValidationError("IPK harus 0.00 - 4.00!")
             
-            # Cek duplikat
             if self.get_by_nim(nim):
                 raise ValidationError("NIM sudah terdaftar!")
             
-            # Buat objek Mahasiswa
-            if status == "Aktif":
-                mahasiswa = MahasiswaAktif(nim, nama, prodi, ipk)
-            elif status == "Cuti":
-                mahasiswa = MahasiswaCuti(nim, nama, prodi, ipk)
-            else:
-                mahasiswa = Mahasiswa(nim, nama, prodi, ipk, status)
+            # Simpan
+            query = "INSERT INTO mahasiswa (nim, nama, prodi, ipk, status) VALUES (?, ?, ?, ?, ?)"
+            self.__db.execute_update(query, (nim, nama, prodi, ipk, status))
             
-            # Simpan ke database
-            data = mahasiswa.to_dict()
-            query = """
-                INSERT INTO mahasiswa (nim, nama, prodi, ipk, status)
-                VALUES (?, ?, ?, ?, ?)
-            """
-            self.__db.execute_update(query, (
-                data['nim'], data['nama'], data['prodi'],
-                data['ipk'], data['status']
-            ))
+            # Update cache
+            self.__data.append({'nim': nim, 'nama': nama, 'prodi': prodi, 'ipk': ipk, 'status': status})
             
-            # Update array
-            self.__mahasiswa_list.append(data)
-            
-            return True, "Data berhasil ditambahkan!"
+            return True, "✅ Data berhasil ditambahkan!"
             
         except (ValidationError, DatabaseError) as e:
-            return False, str(e)
+            return False, f"❌ {str(e)}"
         except Exception as e:
-            return False, f"Terjadi kesalahan: {str(e)}"
+            return False, f"❌ Terjadi kesalahan: {str(e)}"
     
     def update(self, nim: str, nama: str, prodi: str, ipk: float, status: str) -> Tuple[bool, str]:
-        """
-        Mengupdate data mahasiswa
-        
-        Time Complexity: O(n) - Linear search untuk cari data
-        """
+        """Update data - O(n)"""
         try:
-            # Validasi
-            if not Mahasiswa._validate_nama(nama):
-                raise ValidationError("Nama hanya boleh huruf dan spasi (2-50 karakter)!")
+            if not self.get_by_nim(nim):
+                raise ValidationError("NIM tidak ditemukan!")
             
-            if not Mahasiswa.validate_ipk(ipk):
-                raise ValidationError("IPK harus antara 0.00 - 4.00!")
+            if not re.match(Config.NAMA_PATTERN, nama):
+                raise ValidationError("Nama hanya boleh huruf dan spasi!")
             
-            # Cari data
-            existing = self.get_by_nim(nim)
-            if not existing:
-                raise NotFoundError("Mahasiswa dengan NIM tersebut tidak ditemukan!")
+            if not 0.0 <= ipk <= 4.0:
+                raise ValidationError("IPK harus 0.00 - 4.00!")
             
-            # Update database
-            query = """
-                UPDATE mahasiswa 
-                SET nama=?, prodi=?, ipk=?, status=?
-                WHERE nim=?
-            """
-            self.__db.execute_update(query, (nama, prodi, float(ipk), status, nim))
+            query = "UPDATE mahasiswa SET nama=?, prodi=?, ipk=?, status=? WHERE nim=?"
+            self.__db.execute_update(query, (nama, prodi, ipk, status, nim))
             
-            # Update array
-            for i, item in enumerate(self.__mahasiswa_list):
+            # Update cache
+            for item in self.__data:
                 if item['nim'] == nim:
-                    self.__mahasiswa_list[i] = {
-                        'nim': nim, 'nama': nama,
-                        'prodi': prodi, 'ipk': ipk, 'status': status
-                    }
+                    item.update({'nama': nama, 'prodi': prodi, 'ipk': ipk, 'status': status})
                     break
             
-            return True, "Data berhasil diupdate!"
+            return True, "✅ Data berhasil diupdate!"
             
-        except (ValidationError, NotFoundError, DatabaseError) as e:
-            return False, str(e)
+        except (ValidationError, DatabaseError) as e:
+            return False, f"❌ {str(e)}"
         except Exception as e:
-            return False, f"Terjadi kesalahan: {str(e)}"
+            return False, f"❌ Terjadi kesalahan: {str(e)}"
     
     def hapus(self, nim: str) -> Tuple[bool, str]:
-        """
-        Menghapus data mahasiswa
-        
-        Time Complexity: O(n) - Linear search untuk cari data
-        """
+        """Hapus data - O(n)"""
         try:
-            # Cek data exists
             if not self.get_by_nim(nim):
-                raise NotFoundError("Mahasiswa dengan NIM tersebut tidak ditemukan!")
+                raise ValidationError("NIM tidak ditemukan!")
             
-            # Hapus dari database
             query = "DELETE FROM mahasiswa WHERE nim = ?"
             self.__db.execute_update(query, (nim,))
             
-            # Hapus dari array
-            self.__mahasiswa_list = [
-                item for item in self.__mahasiswa_list
-                if item['nim'] != nim
-            ]
+            # Update cache
+            self.__data = [item for item in self.__data if item['nim'] != nim]
             
-            return True, "Data berhasil dihapus!"
+            return True, "✅ Data berhasil dihapus!"
             
-        except (NotFoundError, DatabaseError) as e:
-            return False, str(e)
+        except (ValidationError, DatabaseError) as e:
+            return False, f"❌ {str(e)}"
         except Exception as e:
-            return False, f"Terjadi kesalahan: {str(e)}"
+            return False, f"❌ Terjadi kesalahan: {str(e)}"
     
     def generate_contoh(self) -> Tuple[bool, str]:
-        """
-        Generate data contoh
-        
-        Time Complexity: O(n) dimana n = jumlah data contoh
-        """
+        """Generate data contoh"""
         sample_data = [
             ("2010114001", "Fajar Dian Taufani", "Teknik Informatika", 3.85, "Aktif"),
             ("2010114005", "Siti Aminah", "Sistem Informasi", 3.40, "Aktif"),
             ("2010114002", "Andi Wijaya", "Teknik Informatika", 2.90, "Cuti"),
             ("2010114012", "Riska Amelia", "Manajemen", 4.00, "Aktif"),
-            ("2010114009", "Budi Santoso", "Akuntansi", 3.15, "Pasif")
+            ("2010114009", "Budi Santoso", "Akuntansi", 3.15, "Pasif"),
+            ("2010114015", "Dewi Lestari", "Teknik Informatika", 3.60, "Aktif"),
+            ("2010114020", "Rahmat Hidayat", "Sistem Informasi", 2.75, "Aktif")
         ]
         
         added = 0
@@ -856,58 +516,19 @@ class MahasiswaManager:
             if success:
                 added += 1
         
-        return True, f"{added} data contoh berhasil ditambahkan!"
-    
-    def get_statistics(self) -> Dict[str, Any]:
-        """
-        Mendapatkan statistik data
-        
-        Time Complexity: O(n)
-        """
-        if not self.__mahasiswa_list:
-            return {
-                'total': 0,
-                'aktif': 0,
-                'avg_ipk': 0.0,
-                'max_ipk': 0.0,
-                'min_ipk': 0.0,
-                'prodi_counts': {}
-            }
-        
-        ipk_values = [item['ipk'] for item in self.__mahasiswa_list]
-        status_counts = {}
-        prodi_counts = {}
-        
-        for item in self.__mahasiswa_list:
-            status_counts[item['status']] = status_counts.get(item['status'], 0) + 1
-            prodi_counts[item['prodi']] = prodi_counts.get(item['prodi'], 0) + 1
-        
-        return {
-            'total': len(self.__mahasiswa_list),
-            'aktif': status_counts.get('Aktif', 0),
-            'avg_ipk': sum(ipk_values) / len(ipk_values),
-            'max_ipk': max(ipk_values),
-            'min_ipk': min(ipk_values),
-            'status_counts': status_counts,
-            'prodi_counts': prodi_counts
-        }
+        return True, f"✅ {added} data contoh berhasil ditambahkan!"
 
 # ============================================================================
 # CLASS AUTH MANAGER
 # ============================================================================
 
 class AuthManager:
-    """Manajemen autentikasi user"""
+    """Manajemen autentikasi"""
     
     def __init__(self):
         self.__db = DatabaseManager()
     
     def login(self, username: str, password: str) -> Tuple[bool, str]:
-        """
-        Login user
-        
-        Time Complexity: O(1)
-        """
         try:
             query = "SELECT * FROM users WHERE username = ? AND password = ?"
             result = self.__db.execute_query(query, (username, password))
@@ -918,598 +539,551 @@ class AuthManager:
             
         except DatabaseError as e:
             return False, str(e)
-    
-    def register(self, username: str, password: str, confirm_password: str) -> Tuple[bool, str]:
-        """
-        Register user baru dengan validasi Regex
-        
-        Time Complexity: O(1)
-        """
-        try:
-            # Validasi dengan Regex
-            if not re.match(AppConfig.USERNAME_PATTERN, username):
-                raise ValidationError("Username harus 3-20 karakter (huruf, angka, underscore)!")
-            
-            if not re.match(AppConfig.PASSWORD_PATTERN, password):
-                raise ValidationError("Password minimal 3 karakter!")
-            
-            if password != confirm_password:
-                raise ValidationError("Password tidak cocok!")
-            
-            # Cek username exists
-            check_query = "SELECT * FROM users WHERE username = ?"
-            if self.__db.execute_query(check_query, (username,)):
-                raise ValidationError("Username sudah terdaftar!")
-            
-            # Insert user
-            query = "INSERT INTO users (username, password) VALUES (?, ?)"
-            self.__db.execute_update(query, (username, password))
-            
-            return True, "Registrasi berhasil! Silakan login."
-            
-        except (ValidationError, DatabaseError) as e:
-            return False, str(e)
-        except Exception as e:
-            return False, f"Terjadi kesalahan: {str(e)}"
 
 # ============================================================================
-# STREAMLIT UI CLASS
+# STREAMLIT UI - CLEAN & TERSTRUKTUR
 # ============================================================================
 
 class StreamlitUI:
-    """Class untuk mengelola tampilan Streamlit"""
+    """UI Streamlit dengan tampilan clean"""
     
     def __init__(self):
-        self.mahasiswa_manager = MahasiswaManager()
-        self.auth_manager = AuthManager()
-        self._init_session_state()
-        self._apply_theme()
-        self._render_header()
+        self.mahasiswa = MahasiswaManager()
+        self.auth = AuthManager()
+        self._init_session()
+        self._setup_page()
     
-    def _init_session_state(self) -> None:
+    def _init_session(self):
         """Inisialisasi session state"""
         if 'logged_in' not in st.session_state:
             st.session_state.logged_in = False
             st.session_state.username = ""
-            st.session_state.theme = "dark"
     
-    def _apply_theme(self) -> None:
-        """Apply theme CSS"""
-        if st.session_state.theme == "dark":
-            st.markdown("""
-                <style>
-                    .stApp { background-color: #0f111a; }
-                    .stApp, .stApp p, .stApp h1, .stApp h2, .stApp h3, .stApp label { color: white !important; }
-                    .stButton > button { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; font-weight: bold; }
-                    .stButton > button:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-                    .stTextInput > div > div > input { 
-                        background-color: #1e1e2e; color: white; border: 1px solid #3b82f6; border-radius: 10px; padding: 12px;
-                    }
-                    .stSelectbox > div > div { background-color: #1e1e2e; color: white; }
-                    .stMetric { background: linear-gradient(135deg, #1e1e2e, #16162a); padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-                    .stMetric label { color: #9ca3af !important; }
-                    .stMetric .stMetric-value { color: #3b82f6 !important; font-size: 2rem !important; }
-                    .stTabs [data-baseweb="tab-list"] { gap: 20px; }
-                    .stTabs [data-baseweb="tab"] { background-color: #1e1e2e; border-radius: 10px; padding: 10px 25px; color: white; }
-                    .stTabs [aria-selected="true"] { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; }
-                    .stDataFrame { background-color: #1e1e2e; border-radius: 10px; padding: 10px; }
-                    .main-header { text-align: center; padding: 20px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 20px; margin-bottom: 30px; }
-                    .main-header h1 { color: white !important; margin: 0; }
-                    .main-header p { color: rgba(255,255,255,0.9) !important; }
-                    .complexity-badge { background: #1e1e2e; padding: 10px; border-radius: 10px; border-left: 4px solid #3b82f6; margin: 10px 0; }
-                </style>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-                <style>
-                    .stApp { background-color: #f0f2f5; }
-                    .stButton > button { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 10px; font-weight: bold; }
-                    .stMetric { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-                    .stMetric label { color: #6b7280 !important; }
-                    .stMetric .stMetric-value { color: #3b82f6 !important; font-size: 2rem !important; }
-                    .stTabs [data-baseweb="tab"] { background-color: #e0e0e0; border-radius: 10px; padding: 10px 25px; }
-                    .stTabs [aria-selected="true"] { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; color: white !important; }
-                    .main-header { text-align: center; padding: 20px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 20px; margin-bottom: 30px; }
-                    .main-header h1 { color: white !important; margin: 0; }
-                    .main-header p { color: rgba(255,255,255,0.9) !important; }
-                    .stDataFrame { background-color: white; border-radius: 10px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                    .complexity-badge { background: white; padding: 10px; border-radius: 10px; border-left: 4px solid #3b82f6; margin: 10px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                </style>
-            """, unsafe_allow_html=True)
-    
-    def _render_header(self) -> None:
-        """Render header aplikasi"""
+    def _setup_page(self):
+        """Setup halaman"""
+        st.set_page_config(
+            page_title=Config.PAGE_TITLE,
+            page_icon=Config.PAGE_ICON,
+            layout="wide"
+        )
+        
+        # CSS Custom
         st.markdown("""
-            <div class="main-header">
-                <h1>🎓 SIMM - Sistem Informasi Manajemen Mahasiswa</h1>
-                <p>Universitas Pamulang</p>
-            </div>
+            <style>
+                /* Header */
+                .main-header {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 20px;
+                    border-radius: 15px;
+                    margin-bottom: 30px;
+                    text-align: center;
+                    color: white;
+                }
+                .main-header h1 {
+                    margin: 0;
+                    font-size: 2.5rem;
+                }
+                .main-header p {
+                    margin: 5px 0 0 0;
+                    opacity: 0.9;
+                }
+                
+                /* Card */
+                .card {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 15px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    margin-bottom: 20px;
+                }
+                
+                /* Badge */
+                .badge {
+                    background: #667eea;
+                    color: white;
+                    padding: 5px 15px;
+                    border-radius: 20px;
+                    font-size: 0.8rem;
+                    display: inline-block;
+                    margin: 5px;
+                }
+                
+                .badge-success {
+                    background: #10b981;
+                }
+                
+                .badge-warning {
+                    background: #f59e0b;
+                }
+                
+                .badge-danger {
+                    background: #ef4444;
+                }
+                
+                /* Complexity Info */
+                .complexity-box {
+                    background: #f3f4f6;
+                    padding: 15px;
+                    border-radius: 10px;
+                    border-left: 4px solid #667eea;
+                    margin: 15px 0;
+                }
+                
+                .complexity-box code {
+                    background: #e5e7eb;
+                    padding: 2px 8px;
+                    border-radius: 5px;
+                }
+            </style>
         """, unsafe_allow_html=True)
     
-    def _render_sidebar(self) -> None:
-        """Render sidebar"""
+    def _render_login(self):
+        """Halaman Login"""
+        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        with col2:
+            st.markdown("""
+                <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                    <h2 style="text-align: center; margin-bottom: 30px;">🔐 Login</h2>
+            """, unsafe_allow_html=True)
+            
+            with st.form("login_form"):
+                username = st.text_input("Username", placeholder="Masukkan username")
+                password = st.text_input("Password", type="password", placeholder="Masukkan password")
+                
+                submitted = st.form_submit_button("Login", use_container_width=True)
+                
+                if submitted:
+                    success, msg = self.auth.login(username, password)
+                    if success:
+                        st.session_state.logged_in = True
+                        st.session_state.username = username
+                        st.rerun()
+                    else:
+                        st.error(msg)
+            
+            st.markdown("""
+                <div style="text-align: center; margin-top: 20px; padding: 15px; background: #f3f4f6; border-radius: 10px;">
+                    <p style="margin: 0;">📝 Demo: <code>admin</code> / <code>admin123</code></p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+    def _render_sidebar(self):
+        """Sidebar navigasi"""
         with st.sidebar:
-            st.markdown(f"### 👤 {st.session_state.username if st.session_state.logged_in else 'Guest'}")
+            st.markdown(f"""
+                <div style="text-align: center; padding: 10px;">
+                    <h3>👤 {st.session_state.username}</h3>
+                </div>
+            """, unsafe_allow_html=True)
+            
             st.markdown("---")
             
-            # Theme toggle
-            theme_col1, theme_col2 = st.columns(2)
-            with theme_col1:
-                if st.button("🌙 Dark", use_container_width=True):
-                    st.session_state.theme = "dark"
-                    st.rerun()
-            with theme_col2:
-                if st.button("☀️ Light", use_container_width=True):
-                    st.session_state.theme = "light"
-                    st.rerun()
+            # Menu utama dengan ikon
+            menu = st.radio(
+                "📋 Menu",
+                [
+                    "🏠 Dashboard",
+                    "➕ Tambah Data",
+                    "📋 Data Mahasiswa",
+                    "🔍 Pencarian",
+                    "📊 Statistik"
+                ],
+                index=0
+            )
+            
             st.markdown("---")
+            
+            if st.button("🚪 Logout", use_container_width=True):
+                st.session_state.logged_in = False
+                st.rerun()
+            
+            return menu
     
-    def _render_login(self) -> None:
-        """Render halaman login"""
-        tab1, tab2 = st.tabs(["🔐 LOGIN", "📝 REGISTER"])
+    def _render_dashboard(self):
+        """Dashboard"""
+        st.markdown("""
+            <div class="main-header">
+                <h1>📊 Dashboard</h1>
+                <p>Ringkasan data mahasiswa</p>
+            </div>
+        """, unsafe_allow_html=True)
         
-        with tab1:
-            with st.form("login_form"):
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    st.markdown("### Masuk ke Akun Anda")
-                    username = st.text_input("Username", placeholder="Masukkan username Anda")
-                    password = st.text_input("Password", type="password", placeholder="Masukkan password Anda")
-                    submitted = st.form_submit_button("🔐 Login", use_container_width=True)
-                    
-                    if submitted:
-                        success, msg = self.auth_manager.login(username, password)
-                        if success:
-                            st.session_state.logged_in = True
-                            st.session_state.username = username
-                            st.rerun()
-                        else:
-                            st.error(f"❌ {msg}")
+        data = self.mahasiswa.get_all()
         
-        with tab2:
-            with st.form("register_form"):
-                col1, col2, col3 = st.columns([1, 2, 1])
-                with col2:
-                    st.markdown("### Daftar Akun Baru")
-                    new_username = st.text_input("Username Baru", placeholder="Pilih username Anda")
-                    new_password = st.text_input("Password Baru", type="password", placeholder="Buat password")
-                    confirm_password = st.text_input("Konfirmasi Password", type="password", placeholder="Ulangi password Anda")
-                    submitted_reg = st.form_submit_button("📝 Daftar", use_container_width=True)
-                    
-                    if submitted_reg:
-                        success, msg = self.auth_manager.register(
-                            new_username, new_password, confirm_password
-                        )
-                        if success:
-                            st.success(f"✅ {msg}")
-                        else:
-                            st.error(f"❌ {msg}")
-        
-        st.stop()
-    
-    def _render_dashboard(self) -> None:
-        """Render halaman dashboard"""
-        st.markdown("### 🏠 Dashboard")
-        
-        data = self.mahasiswa_manager.get_all()
-        stats = self.mahasiswa_manager.get_statistics()
-        
+        # Statistik Cards
         col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("📊 Total Mahasiswa", stats['total'])
-        with col2:
-            st.metric("✅ Mahasiswa Aktif", stats['aktif'])
-        with col3:
-            st.metric("⭐ Rata-rata IPK", f"{stats['avg_ipk']:.2f}")
-        with col4:
-            st.metric("🏆 IPK Tertinggi", f"{stats['max_ipk']:.2f}")
         
+        total = len(data)
+        aktif = len([d for d in data if d['status'] == 'Aktif'])
+        avg_ipk = sum(d['ipk'] for d in data) / total if total > 0 else 0
+        max_ipk = max([d['ipk'] for d in data]) if data else 0
+        
+        with col1:
+            st.metric("📊 Total Mahasiswa", total)
+        with col2:
+            st.metric("✅ Aktif", aktif)
+        with col3:
+            st.metric("⭐ Rata-rata IPK", f"{avg_ipk:.2f}")
+        with col4:
+            st.metric("🏆 IPK Tertinggi", f"{max_ipk:.2f}")
+        
+        # Tombol Generate
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📄 Generate Contoh Data", use_container_width=True):
-                success, msg = self.mahasiswa_manager.generate_contoh()
+                success, msg = self.mahasiswa.generate_contoh()
                 if success:
                     st.success(msg)
                     st.rerun()
                 else:
                     st.error(msg)
         
-        # Complexity Information
-        st.markdown("""
-            <div class="complexity-badge">
-                <b>⚡ Time Complexity Dashboard:</b><br>
-                - get_all(): O(1) - Mengembalikan referensi array<br>
-                - get_statistics(): O(n) - Iterasi semua data untuk menghitung statistik
-            </div>
-        """, unsafe_allow_html=True)
+        # Tabel data terbaru
+        st.markdown("---")
+        st.subheader("📋 Data Terbaru")
         
-        st.subheader("📋 Data Mahasiswa Terbaru")
         if data:
             df = pd.DataFrame(data)
             st.dataframe(df.head(10), use_container_width=True)
         else:
-            st.info("Belum ada data. Klik 'Generate Contoh Data' untuk mengisi.")
+            st.info("Belum ada data. Klik 'Generate Contoh Data' untuk menambahkan.")
     
-    def _render_tambah(self) -> None:
-        """Render halaman tambah mahasiswa"""
-        st.markdown("### ➕ Tambah Mahasiswa Baru")
+    def _render_tambah(self):
+        """Halaman Tambah Data"""
+        st.markdown("""
+            <div class="main-header">
+                <h1>➕ Tambah Mahasiswa</h1>
+                <p>Masukkan data mahasiswa baru</p>
+            </div>
+        """, unsafe_allow_html=True)
         
-        with st.form("tambah_form"):
+        with st.form("tambah_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             
             with col1:
                 nim = st.text_input("NIM (10-12 digit)", placeholder="Contoh: 2010114001")
                 nama = st.text_input("Nama Lengkap", placeholder="Masukkan nama lengkap")
-                prodi = st.selectbox("Program Studi", AppConfig.PRODI_LIST)
+                prodi = st.selectbox("Program Studi", Config.PRODI_LIST)
             
             with col2:
                 ipk = st.number_input("IPK (0.00 - 4.00)", min_value=0.0, max_value=4.0, step=0.01, format="%.2f")
-                status = st.selectbox("Status", AppConfig.STATUS_LIST)
+                status = st.selectbox("Status", Config.STATUS_LIST)
             
-            # Complexity Info
             st.markdown("""
-                <div class="complexity-badge">
-                    <b>⚡ Time Complexity:</b><br>
-                    - Validasi input: O(n) (Regex matching)<br>
-                    - Cek duplikat: O(n) (Linear Search)<br>
-                    - Insert ke database: O(1)<br>
-                    - Update array: O(1)
+                <div class="complexity-box">
+                    <b>⚡ Kompleksitas:</b><br>
+                    • Validasi: O(1)<br>
+                    • Insert Data: O(1)<br>
+                    • Update Cache: O(1)
                 </div>
             """, unsafe_allow_html=True)
             
-            submitted = st.form_submit_button("💾 Simpan Mahasiswa", use_container_width=True)
+            submitted = st.form_submit_button("💾 Simpan Data", use_container_width=True)
             
             if submitted:
                 if not nim or not nama:
-                    st.error("NIM dan Nama harus diisi!")
+                    st.error("❌ NIM dan Nama harus diisi!")
                 else:
-                    success, msg = self.mahasiswa_manager.tambah(nim, nama, prodi, ipk, status)
+                    success, msg = self.mahasiswa.tambah(nim, nama, prodi, ipk, status)
                     if success:
                         st.success(msg)
                         st.balloons()
                     else:
                         st.error(msg)
     
-    def _render_data(self) -> None:
-        """Render halaman data mahasiswa"""
-        st.markdown("### 📋 Data Mahasiswa")
-        
-        data = self.mahasiswa_manager.get_all()
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            search = st.text_input("🔍 Cari (NIM/Nama)", placeholder="Ketik NIM atau Nama...")
-        with col2:
-            status_filter = st.selectbox("Filter Status", ["Semua"] + AppConfig.STATUS_LIST)
-        with col3:
-            sort_by = st.selectbox("Urutkan Berdasarkan", ["NIM", "Nama", "IPK", "Status"])
-        
-        # Pilihan algoritma pencarian
-        search_algo = st.radio(
-            "Pilih Algoritma Pencarian",
-            ["Linear Search (O(n))", "Binary Search (O(log n))", "Sequential Search (O(n))"],
-            horizontal=True
-        )
-        
-        # Complexity Info
+    def _render_data(self):
+        """Halaman Data Mahasiswa"""
         st.markdown("""
-            <div class="complexity-badge">
-                <b>⚡ Complexity:</b><br>
-                - Linear/Sequential Search: O(n)<br>
-                - Binary Search: O(log n) <i>(data harus terurut)</i>
+            <div class="main-header">
+                <h1>📋 Data Mahasiswa</h1>
+                <p>Kelola data mahasiswa</p>
             </div>
         """, unsafe_allow_html=True)
         
-        if data:
-            filtered_data = data.copy()
+        data = self.mahasiswa.get_all()
+        
+        if not data:
+            st.info("Belum ada data. Generate contoh data terlebih dahulu.")
+            return
+        
+        # Filter dan Search
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            search = st.text_input("🔍 Cari", placeholder="Ketik NIM atau Nama...")
+        with col2:
+            filter_status = st.selectbox("Filter Status", ["Semua"] + Config.STATUS_LIST)
+        with col3:
+            sort_by = st.selectbox("Urutkan", ["NIM", "Nama", "IPK", "Status"])
+        
+        # Filter data
+        filtered = data.copy()
+        
+        if search:
+            search_lower = search.lower()
+            filtered = [
+                item for item in filtered
+                if search_lower in item['nim'].lower() or 
+                   search_lower in item['nama'].lower()
+            ]
+        
+        if filter_status != "Semua":
+            filtered = [item for item in filtered if item['status'] == filter_status]
+        
+        # Sorting
+        key_map = {"NIM": "nim", "Nama": "nama", "IPK": "ipk", "Status": "status"}
+        if sort_by in key_map:
+            filtered = sorted(filtered, key=lambda x: x[key_map[sort_by]])
+        
+        # Tampilkan data
+        if filtered:
+            df = pd.DataFrame(filtered)
+            st.dataframe(df, use_container_width=True)
             
-            # Apply search
-            if search:
-                if "Linear" in search_algo:
-                    results = SearchAlgorithms.sequential_search(
-                        filtered_data, {'nama': search}
-                    )
-                    if not results:
-                        results = SearchAlgorithms.sequential_search(
-                            filtered_data, {'nim': search}
-                        )
-                    filtered_data = results
-                elif "Binary" in search_algo:
-                    # Binary Search memerlukan data terurut
-                    sorted_data = sorted(filtered_data, key=lambda x: x['nim'])
-                    result = SearchAlgorithms.binary_search(sorted_data, 'nim', search)
-                    filtered_data = [result] if result else []
-                else:  # Sequential
-                    filtered_data = SearchAlgorithms.sequential_search(
-                        filtered_data, {'nama': search}
-                    )
-                    if not filtered_data:
-                        filtered_data = SearchAlgorithms.sequential_search(
-                            data, {'nim': search}
-                        )
+            # Hapus Data
+            st.markdown("---")
+            st.subheader("🗑️ Hapus Data")
             
-            # Apply status filter
-            if status_filter != "Semua":
-                filtered_data = [item for item in filtered_data if item['status'] == status_filter]
-            
-            # Apply sorting
-            key_map = {
-                "NIM": "nim",
-                "Nama": "nama",
-                "IPK": "ipk",
-                "Status": "status"
-            }
-            if sort_by in key_map:
-                filtered_data = sorted(filtered_data, key=lambda x: x[key_map[sort_by]])
-            
-            if filtered_data:
-                df = pd.DataFrame(filtered_data)
-                st.dataframe(df, use_container_width=True)
-                
-                # Hapus Data
-                st.subheader("🗑️ Hapus Data")
+            col1, col2 = st.columns([2, 1])
+            with col1:
                 nim_to_delete = st.selectbox(
-                    "Pilih NIM yang akan dihapus",
-                    [item['nim'] for item in filtered_data]
+                    "Pilih NIM untuk dihapus",
+                    [item['nim'] for item in filtered]
                 )
-                if st.button("Hapus Data", type="secondary"):
-                    success, msg = self.mahasiswa_manager.hapus(nim_to_delete)
+            with col2:
+                if st.button("Hapus", type="secondary", use_container_width=True):
+                    success, msg = self.mahasiswa.hapus(nim_to_delete)
                     if success:
                         st.success(msg)
                         st.rerun()
                     else:
                         st.error(msg)
-            else:
-                st.info("Tidak ada data yang cocok dengan pencarian.")
         else:
-            st.info("Belum ada data. Klik 'Generate Contoh Data' di menu Dashboard.")
+            st.warning("Tidak ada data yang cocok dengan filter.")
     
-    def _render_edit(self) -> None:
-        """Render halaman edit mahasiswa"""
-        st.markdown("### ✏️ Edit Data Mahasiswa")
+    def _render_search(self):
+        """Halaman Pencarian dengan Algoritma"""
+        st.markdown("""
+            <div class="main-header">
+                <h1>🔍 Pencarian Mahasiswa</h1>
+                <p>Gunakan berbagai algoritma pencarian</p>
+            </div>
+        """, unsafe_allow_html=True)
         
-        data = self.mahasiswa_manager.get_all()
+        data = self.mahasiswa.get_all()
         
-        if data:
-            nim_list = [item['nim'] for item in data]
-            selected_nim = st.selectbox("Pilih Mahasiswa yang akan diedit", nim_list)
-            
-            if selected_nim:
-                selected_data = self.mahasiswa_manager.get_by_nim(selected_nim)
-                
-                if selected_data:
-                    with st.form("edit_form"):
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            nim = st.text_input("NIM", value=selected_data['nim'], disabled=True)
-                            nama = st.text_input("Nama", value=selected_data['nama'])
-                            prodi = st.selectbox(
-                                "Program Studi",
-                                AppConfig.PRODI_LIST,
-                                index=AppConfig.PRODI_LIST.index(selected_data['prodi'])
-                                if selected_data['prodi'] in AppConfig.PRODI_LIST else 0
-                            )
-                        
-                        with col2:
-                            ipk = st.number_input(
-                                "IPK",
-                                min_value=0.0,
-                                max_value=4.0,
-                                step=0.01,
-                                format="%.2f",
-                                value=float(selected_data['ipk'])
-                            )
-                            status = st.selectbox(
-                                "Status",
-                                AppConfig.STATUS_LIST,
-                                index=AppConfig.STATUS_LIST.index(selected_data['status'])
-                            )
-                        
-                        st.markdown("""
-                            <div class="complexity-badge">
-                                <b>⚡ Time Complexity:</b><br>
-                                - Update database: O(1)<br>
-                                - Update array: O(n) - Linear search untuk cari data
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        submitted = st.form_submit_button("💾 Update Data", use_container_width=True)
-                        
-                        if submitted:
-                            if not nama:
-                                st.error("Nama harus diisi!")
-                            else:
-                                success, msg = self.mahasiswa_manager.update(
-                                    selected_nim, nama, prodi, ipk, status
-                                )
-                                if success:
-                                    st.success(msg)
-                                    st.rerun()
-                                else:
-                                    st.error(msg)
-        else:
+        if not data:
             st.info("Belum ada data. Generate contoh data terlebih dahulu.")
-    
-    def _render_statistik(self) -> None:
-        """Render halaman statistik"""
-        st.markdown("### 📈 Statistik Mahasiswa")
+            return
         
-        data = self.mahasiswa_manager.get_all()
-        stats = self.mahasiswa_manager.get_statistics()
+        st.markdown("""
+            <div class="card">
+                <h4>📖 Pilih Algoritma Pencarian</h4>
+        """, unsafe_allow_html=True)
         
-        if data:
-            df = pd.DataFrame(data)
-            
-            # Status Distribution
-            st.subheader("📊 Status Mahasiswa")
-            status_counts = pd.DataFrame(
-                list(stats['status_counts'].items()),
-                columns=['Status', 'Jumlah']
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            algorithm = st.selectbox(
+                "Algoritma",
+                [
+                    "Linear Search - O(n)",
+                    "Binary Search - O(log n)",
+                    "Sequential Search - O(n)"
+                ]
             )
+        
+        with col2:
+            search_type = st.selectbox("Cari Berdasarkan", ["NIM", "Nama"])
+            keyword = st.text_input("Kata Kunci", placeholder="Masukkan kata kunci...")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Complexity Info
+        st.markdown("""
+            <div class="complexity-box">
+                <b>📊 Perbandingan Kompleksitas:</b><br>
+                • <b>Linear Search</b>: O(n) - Mencari satu per satu dari awal<br>
+                • <b>Binary Search</b>: O(log n) - Membagi data menjadi 2 bagian (data harus terurut)<br>
+                • <b>Sequential Search</b>: O(n) - Mencari di semua field
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔍 Cari", use_container_width=True):
+            if not keyword:
+                st.warning("⚠️ Masukkan kata kunci terlebih dahulu!")
+                return
             
-            fig_status = px.pie(
-                status_counts,
-                values='Jumlah',
-                names='Status',
-                title='Distribusi Status Mahasiswa',
-                color='Status',
-                color_discrete_map={'Aktif': '#10b981', 'Pasif': '#ef4444', 'Cuti': '#f59e0b'},
-                hole=0.3
-            )
-            fig_status.update_layout(
-                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
-            )
-            fig_status.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig_status, use_container_width=True)
+            key = "nim" if search_type == "NIM" else "nama"
+            results = []
             
-            col1, col2 = st.columns(2)
+            # Jalankan algoritma yang dipilih
+            if "Linear" in algorithm:
+                with st.spinner("Mencari dengan Linear Search..."):
+                    result = SearchAlgorithms.linear_search(data, key, keyword)
+                    if result:
+                        results = [result]
+                    st.info(f"✅ Linear Search selesai - O(n)")
             
-            # Program Studi Distribution
-            with col1:
-                st.subheader("📚 Program Studi")
-                prodi_counts = pd.DataFrame(
-                    list(stats['prodi_counts'].items()),
-                    columns=['Program Studi', 'Jumlah']
-                ).head(5)
-                
-                fig_prodi = px.pie(
-                    prodi_counts,
-                    values='Jumlah',
-                    names='Program Studi',
-                    title='5 Program Studi Teratas',
-                    hole=0.3
-                )
-                fig_prodi.update_layout(
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
-                )
-                st.plotly_chart(fig_prodi, use_container_width=True)
+            elif "Binary" in algorithm:
+                with st.spinner("Mencari dengan Binary Search..."):
+                    result = SearchAlgorithms.binary_search(data, key, keyword)
+                    if result:
+                        results = [result]
+                    st.info(f"✅ Binary Search selesai - O(log n)")
             
-            # IPK Distribution
-            with col2:
-                st.subheader("⭐ Distribusi IPK")
-                fig_ipk = px.histogram(
-                    df,
-                    x='ipk',
-                    nbins=10,
-                    title='Histogram IPK Mahasiswa',
-                    color_discrete_sequence=['#3b82f6']
-                )
-                fig_ipk.update_layout(bargap=0.1)
-                st.plotly_chart(fig_ipk, use_container_width=True)
+            else:  # Sequential
+                with st.spinner("Mencari dengan Sequential Search..."):
+                    results = SearchAlgorithms.sequential_search(data, keyword)
+                    st.info(f"✅ Sequential Search selesai - O(n)")
             
-            # IPK Statistics
-            st.subheader("📊 Statistik IPK")
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Rata-rata IPK", f"{stats['avg_ipk']:.2f}")
-            with col2:
-                st.metric("IPK Tertinggi", f"{stats['max_ipk']:.2f}")
-            with col3:
-                st.metric("IPK Terendah", f"{stats['min_ipk']:.2f}")
-            with col4:
-                st.metric("Total Mahasiswa", stats['total'])
-            
-            # Sorting Demo
-            st.subheader("🔀 Demo Algoritma Sorting")
-            sort_algorithm = st.selectbox(
-                "Pilih Algoritma Sorting",
-                ["Bubble Sort (O(n²))", "Insertion Sort (O(n²))", 
-                 "Selection Sort (O(n²))", "Merge Sort (O(n log n))", 
-                 "Shell Sort (O(n log n))"]
-            )
-            
-            sort_key = st.selectbox("Sort Berdasarkan", ["NIM", "Nama", "IPK", "Status"])
-            sort_reverse = st.checkbox("Urutkan Descending")
-            
-            if st.button("🔄 Jalankan Sorting", use_container_width=True):
-                key_map = {
-                    "NIM": "nim",
-                    "Nama": "nama",
-                    "IPK": "ipk",
-                    "Status": "status"
-                }
-                
-                algorithm_map = {
-                    "Bubble Sort (O(n²))": "bubble",
-                    "Insertion Sort (O(n²))": "insertion",
-                    "Selection Sort (O(n²))": "selection",
-                    "Merge Sort (O(n log n))": "merge",
-                    "Shell Sort (O(n log n))": "shell"
-                }
-                
-                sorted_data = self.mahasiswa_manager.sort(
-                    key=key_map[sort_key],
-                    algorithm=algorithm_map[sort_algorithm],
-                    reverse=sort_reverse
-                )
-                
-                st.dataframe(pd.DataFrame(sorted_data), use_container_width=True)
-                st.success(f"✅ Data berhasil diurutkan dengan {sort_algorithm}")
-            
-            # Complexity Summary
-            st.markdown("""
-                <div class="complexity-badge">
-                    <b>📊 Time Complexity Summary:</b><br>
-                    - Linear/Sequential Search: O(n)<br>
-                    - Binary Search: O(log n)<br>
-                    - Bubble/Insertion/Selection Sort: O(n²)<br>
-                    - Merge/Shell Sort: O(n log n)<br>
-                    - Statistik (mean, min, max): O(n)<br>
-                    - CRUD Operations: O(1) - O(n)
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Full data
-            with st.expander("📋 Lihat Data Lengkap Mahasiswa"):
+            # Tampilkan hasil
+            if results:
+                st.success(f"✅ Ditemukan {len(results)} data!")
+                df = pd.DataFrame(results)
                 st.dataframe(df, use_container_width=True)
-        else:
-            st.info("Belum ada data. Klik 'Generate Contoh Data' di menu Dashboard.")
+            else:
+                st.warning("❌ Data tidak ditemukan!")
     
-    def run(self) -> None:
-        """Main method untuk menjalankan aplikasi"""
-        self._render_sidebar()
+    def _render_statistik(self):
+        """Halaman Statistik dengan Sorting"""
+        st.markdown("""
+            <div class="main-header">
+                <h1>📊 Statistik & Sorting</h1>
+                <p>Analisis data dan demo sorting</p>
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Check login
+        data = self.mahasiswa.get_all()
+        
+        if not data:
+            st.info("Belum ada data. Generate contoh data terlebih dahulu.")
+            return
+        
+        # Statistik
+        col1, col2, col3 = st.columns(3)
+        
+        total = len(data)
+        aktif = len([d for d in data if d['status'] == 'Aktif'])
+        avg_ipk = sum(d['ipk'] for d in data) / total
+        
+        with col1:
+            st.metric("Total", total)
+        with col2:
+            st.metric("Aktif", aktif)
+        with col3:
+            st.metric("Rata-rata IPK", f"{avg_ipk:.2f}")
+        
+        # Grafik Status
+        st.subheader("📊 Distribusi Status")
+        status_counts = {}
+        for item in data:
+            status_counts[item['status']] = status_counts.get(item['status'], 0) + 1
+        
+        df_status = pd.DataFrame(list(status_counts.items()), columns=['Status', 'Jumlah'])
+        fig = px.pie(df_status, values='Jumlah', names='Status', hole=0.3)
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Sorting Demo
+        st.markdown("---")
+        st.subheader("🔀 Demo Sorting")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            sort_algorithm = st.selectbox(
+                "Algoritma",
+                [
+                    "Bubble Sort - O(n²)",
+                    "Insertion Sort - O(n²)",
+                    "Merge Sort - O(n log n)",
+                    "Shell Sort - O(n log n)"
+                ]
+            )
+        
+        with col2:
+            sort_key = st.selectbox("Sort Berdasarkan", ["NIM", "Nama", "IPK", "Status"])
+        
+        with col3:
+            sort_reverse = st.checkbox("Descending")
+        
+        # Complexity Info
+        st.markdown("""
+            <div class="complexity-box">
+                <b>📊 Perbandingan Kompleksitas Sorting:</b><br>
+                • <b>Bubble Sort</b>: O(n²) - Membandingkan elemen bersebelahan<br>
+                • <b>Insertion Sort</b>: O(n²) - Membangun array terurut satu per satu<br>
+                • <b>Merge Sort</b>: O(n log n) - Membagi dan menggabungkan<br>
+                • <b>Shell Sort</b>: O(n log n) - Perbaikan insertion sort dengan gap
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔄 Jalankan Sorting", use_container_width=True):
+            with st.spinner(f"Menjalankan {sort_algorithm}..."):
+                key_map = {"NIM": "nim", "Nama": "nama", "IPK": "ipk", "Status": "status"}
+                algo_map = {
+                    "Bubble Sort - O(n²)": "bubble",
+                    "Insertion Sort - O(n²)": "insertion",
+                    "Merge Sort - O(n log n)": "merge",
+                    "Shell Sort - O(n log n)": "shell"
+                }
+                
+                algo_name = algo_map[sort_algorithm]
+                key = key_map[sort_key]
+                
+                # Panggil algoritma sorting
+                if algo_name == "bubble":
+                    sorted_data = SortingAlgorithms.bubble_sort(data, key, sort_reverse)
+                elif algo_name == "insertion":
+                    sorted_data = SortingAlgorithms.insertion_sort(data, key, sort_reverse)
+                elif algo_name == "merge":
+                    sorted_data = SortingAlgorithms.merge_sort(data, key, sort_reverse)
+                else:  # shell
+                    sorted_data = SortingAlgorithms.shell_sort(data, key, sort_reverse)
+                
+                st.success(f"✅ Sorting selesai dengan {sort_algorithm}")
+                df = pd.DataFrame(sorted_data)
+                st.dataframe(df, use_container_width=True)
+    
+    def run(self):
+        """Main run"""
+        # Header
+        st.markdown("""
+            <div class="main-header">
+                <h1>🎓 SIMM - Sistem Informasi Mahasiswa</h1>
+                <p>Universitas Pamulang</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Cek login
         if not st.session_state.logged_in:
             self._render_login()
             return
         
-        # Menu
-        menu = st.sidebar.radio(
-            "📋 Menu Utama",
-            ["🏠 Dashboard", "➕ Tambah Mahasiswa", "📋 Data Mahasiswa", 
-             "✏️ Edit Data", "📈 Statistik"]
-        )
-        
-        if st.sidebar.button("🚪 Logout", use_container_width=True):
-            st.session_state.logged_in = False
-            st.rerun()
+        # Render sidebar dan dapatkan menu
+        menu = self._render_sidebar()
         
         # Render menu
         if menu == "🏠 Dashboard":
             self._render_dashboard()
-        elif menu == "➕ Tambah Mahasiswa":
+        elif menu == "➕ Tambah Data":
             self._render_tambah()
         elif menu == "📋 Data Mahasiswa":
             self._render_data()
-        elif menu == "✏️ Edit Data":
-            self._render_edit()
-        elif menu == "📈 Statistik":
+        elif menu == "🔍 Pencarian":
+            self._render_search()
+        elif menu == "📊 Statistik":
             self._render_statistik()
 
 # ============================================================================
-# MAIN APPLICATION
+# MAIN
 # ============================================================================
 
 def main():
-    """Main entry point aplikasi"""
-    st.set_page_config(
-        page_title=AppConfig.PAGE_TITLE,
-        page_icon=AppConfig.PAGE_ICON,
-        layout=AppConfig.LAYOUT
-    )
-    
     app = StreamlitUI()
     app.run()
 
