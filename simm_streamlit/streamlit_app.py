@@ -255,11 +255,9 @@ if not st.session_state['logged_in']:
         
         st.markdown('<div class="login-container">', unsafe_allow_html=True)
         st.markdown("""
-        <div class="login-logos">
-            <div class="logo-placeholder">YSJ</div>
-            <div class="login-title">LOGIN</div>
-            <div class="logo-placeholder">UNPAM</div>
-        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+    <img src="https://raw.githubusercontent.com/skyskuyy4-dev/simm-streamlit/refs/heads/main/login.png" style="max-width: 100%; height: auto; border-radius: 10px;">
+</div>
         """, unsafe_allow_html=True)
         
         if choice == "LOGIN":
