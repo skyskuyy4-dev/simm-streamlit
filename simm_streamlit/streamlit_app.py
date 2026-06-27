@@ -242,9 +242,7 @@ if not st.session_state.logged_in:
                         else:
                             st.error("❌ " + msg)
     
-    st.markdown("---")
-    st.markdown("<p style='text-align: center;'>✨ Demo: <code>fitra</code> / <code>12345</code></p>", unsafe_allow_html=True)
-    st.stop()
+        st.stop()
 
 # ========== MENU UTAMA ==========
 menu = st.sidebar.radio(
